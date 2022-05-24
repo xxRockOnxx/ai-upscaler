@@ -1,0 +1,20 @@
+{
+  "name": "ai_upscaler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^6.0.0",
+    "@fastify/multipart": "^6.0.0",
+    "bull": "^4.8.3",
+    "crypto-random-string": "3",
+    "fastify": "^3.29.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "progress": "^2.0.3",
+    "redis": "^4.1.0",
+    "uuid": "^8.3.2"
+  }
+}

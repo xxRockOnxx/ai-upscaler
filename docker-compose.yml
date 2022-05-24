@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile_node
+    depends_on:
+      - redis
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./realesrgan:/app/realesrgan
+      - ./node_modules:/app/node_modules
+    environment:
+      - FFMPEG_PATH=/app/ffmpeg/ffmpeg
+      - FFPROBE_PATH=/app/ffmpeg/ffprobe
+      - REAL_ESRGAN_PATH=/app/realesrgan/realesrgan-ncnn-vulkan
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: node /app/src/server.js
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
