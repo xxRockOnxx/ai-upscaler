@@ -1,3 +1,17 @@
+class QueueError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "QueueError";
+  }
+}
+
+// Valid status are:
+// idle
+// waiting
+// ready
+// processing
+// finished
+// failed
 module.exports = function createQueue(redis) {
   return {
     async getAll() {
@@ -10,52 +24,127 @@ module.exports = function createQueue(redis) {
       return raw;
     },
 
+    async join(id) {
+      const list = await this.getAll();
+
+      if (!list[id]) {
+        const position = Object.keys(list).length + 1;
+        const status = position === 1 ? "ready" : "waiting";
+
+        await this.save(id, {
+          status,
+          position,
+          updatedAt: Date.now(),
+        });
+
+        return;
+      }
+
+      const joinableStatus = [
+        "idle",
+        "finished",
+        "failed",
+      ]
+
+      if (!joinableStatus.includes(list[id].status)) {
+        throw new QueueError("Already in queue");
+      }
+
+      const position = Object.keys(list).length;
+      const status = position === 1 ? "ready" : "waiting";
+
+      await this.save(id, {
+        status,
+        position,
+        updatedAt: Date.now(),
+      });
+    },
+
+    async refresh(id) {
+      const list = await this.getAll();
+      const item = list[id];
+
+      if (!item) {
+        throw new QueueError("Queue item not found");
+      }
+
+      const refreshableStatus = ["waiting", "ready", "processing"];
+
+      if (!refreshableStatus.includes(item.status)) {
+        throw new QueueError("Queue item not in refreshable status");
+      }
+
+      await this.save(id, {
+        ...item,
+        updatedAt: Date.now(),
+      })
+    },
+
+    async markAsStatus(id, status) {
+      const list = await this.getAll();
+      const item = list[id];
+
+      if (!item) {
+        throw new QueueError("Queue item not found");
+      }
+
+      await this.save(id, {
+        ...item,
+        status,
+        updatedAt: Date.now(),
+      })
+    },
+
     async save(id, data) {
       await redis.hSet("queue", id, JSON.stringify(data));
     },
 
-    async upsert(id, data) {
+    async removeIfExpired(id) {
       const list = await this.getAll();
-      const current = list[id] ?? {};
-      await this.save(id, {
-        ...current,
-        ...data,
-      });
+      const item = list[id] ?? {};
+      const updatedAt = new Date(item.updatedAt);
+      const expiryWaiting = 1000 * 60;
+      const expiryFinished = 1000 * 60 * 60;
+
+      const expirableStatus = [
+        "waiting",
+        "ready",
+        "processing",
+      ];
+
+      if (
+        expirableStatus.includes(item.status) &&
+        updatedAt < Date.now() - expiryWaiting
+      ) {
+        await redis.hDel("queue", id);
+        return true;
+      }
+
+      // Once finished, we should update back to idle so they can join queue again.
+      // Figure out a way to separate download expiry from queue expiry
+      if (item.status === 'finished' && updatedAt < Date.now() - expiryFinished) {
+        await redis.hDel("queue", id);
+        return true
+      }
+
+      return false;
     },
 
-    async removeExpired() {
+    async sort() {
       const list = await this.getAll();
-      const expired = [];
 
-      Object.keys(list).forEach((id) => {
-        const item = list[id];
-        const updatedAt = new Date(item.updatedAt)
-
-        const expiryFinished = 1000 * 60 * 60;
-        const expiryWaiting = 1000 * 60;
-
-        const expiredFinished = item.status === "finished" && updatedAt < Date.now() - expiryFinished
-        const expiredWaiting = item.status === "waiting" && updatedAt < Date.now() - expiryWaiting
-
-        if (expiredFinished || expiredWaiting || item.status === "failed") {
-          expired.push(id);
-          delete list[id];
-        }
-      });
-
-      const taskDelete = expired.map((id) => redis.hDel("queue", id));
-
-      const taskUpdate = Object.keys(list)
+      await Object.keys(list)
         .filter((id) => list[id].status === "waiting")
         .sort((a, b) => list[a].position - list[b].position)
         .map((id, index) => {
           list[id].position = index + 1;
-          this.save(id, list[id])
+
+          if (list[id].position === 1) {
+            list[id].status = "ready";
+          }
+
+          return this.save(id, list[id])
         });
-
-      await Promise.all(taskDelete, taskUpdate);
-
-      return expired
     },
   };
 }

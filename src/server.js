@@ -3,15 +3,19 @@ const fastify = require('fastify');
 const fastifyCookie = require("@fastify/cookie");
 const fastifyMultipart = require("@fastify/multipart");
 const crypto = require('crypto-random-string');
+const fs = require('fs').promises;
 const createQueue = require('./queue')
 const createJobs = require('./jobs');
 const createUpscaler = require('./upscaler');
-const Storage = require('./storage')
 const getQueue = require('./http/get-queue');
-const postQueue = require('./http/post-queue');
+const putQueue = require('./http/put-queue');
 const postSubmit = require('./http/post-submit');
 const getProgress = require('./http/get-progress');
+const putCancel = require('./http/put-cancel');
 
+/**
+ * @returns {Promise<fastify.FastifyInstance>}
+ */
 async function createServer() {
   const server = fastify({
     logger: {
@@ -66,12 +70,9 @@ async function start() {
   })
   const server = await createServer();
 
-  server.get('/', async (request, reply) => {
-    reply.send("HI")
-  });
-
   server.get('/queue', getQueue(queue));
-  server.post('/queue', postQueue(queue));
+  server.put('/queue', putQueue(queue));
+  server.put('/cancel', putCancel(queue));
 
   server.route({
     method: "GET",
@@ -92,31 +93,18 @@ async function start() {
   console.log(`Listening on http://0.0.0.0:3000`);
 
   upscaler.queue.upscale.on("completed", (job, result) => {
-    queue.upsert(job.data.id, {
-      status: "finished",
-      updatedAt: new Date(),
-    });
-  })
+    queue
+      .markAsStatus(job.data.id, "finished")
+      .then(() => queue.sort());
+
+    fs.rm(job.data.input)
+  });
 
   upscaler.queue.upscale.on("failed", (job, err) => {
-    queue.upsert(job.data.id, {
-      status: "failed",
-      updatedAt: new Date(),
-    });
-  })
-
-  setInterval(() => {
-    console.log("[Task] Running cleanup");
-    queue.removeExpired().then((expired) => {
-      console.log(`[Task] Removed ${expired.length} expired queue`);
-      console.log("[Task] Removing expired working directories");
-      expired.forEach((id) => {
-        Storage.delete(id).catch((e) => {
-          // The directory might not have existed yet
-        })
-      });
-    })
-  }, 1000 * 60);
+    queue
+      .markAsStatus(job.data.id, "failed")
+      .then(() => queue.sort());
+  });
 }
 
 start()
