@@ -22,7 +22,14 @@ module.exports = class Storage {
   }
 
   initialize() {
-    return fs.mkdir(this.workDir);
+    return fs.access(this.workDir)
+      .catch((e) => {
+        if (e.code !== 'ENOENT') {
+          throw e;
+        }
+
+        return fs.mkdir(this.workDir);
+      })
   }
 
   async store(relativePath, stream) {
