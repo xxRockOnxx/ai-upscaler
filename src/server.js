@@ -12,6 +12,8 @@ const putQueue = require('./http/put-queue');
 const postSubmit = require('./http/post-submit');
 const getProgress = require('./http/get-progress');
 const putCancel = require('./http/put-cancel');
+const getFrames = require('./http/get-frames');
+const getFrame = require('./http/get-frame');
 
 /**
  * @returns {Promise<fastify.FastifyInstance>}
@@ -82,6 +84,20 @@ async function start() {
   });
 
   server.route({
+    method: "GET",
+    url: "/frames",
+    preHandler: [createAssertQueue(queue)],
+    handler: getFrames(),
+  });
+
+  server.route({
+    method: "GET",
+    url: "/frame/:frame",
+    preHandler: [createAssertQueue(queue)],
+    handler: getFrame(),
+  });
+
+  server.route({
     method: "POST",
     url: "/submit",
     preHandler: [createAssertQueue(queue)],
@@ -101,6 +117,7 @@ async function start() {
   });
 
   upscaler.queue.upscale.on("failed", (job, err) => {
+    console.error("Upscale failed", err);
     queue
       .markAsStatus(job.data.id, "failed")
       .then(() => queue.sort());
