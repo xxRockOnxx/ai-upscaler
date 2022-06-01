@@ -17,7 +17,7 @@ module.exports = function getProgress(queue, jobs, upscaler) {
     const queueList = await queue.getAll();
     const queueItem = queueList[request.cookies.queue];
 
-    if (queueItem.status !== "processing") {
+    if (!["processing", "finished"].includes(queueItem.status)) {
       return reply.send({
         status: queueItem.status,
       });
