@@ -100,7 +100,10 @@ function createUpscaler({ jobs, redis }) {
   stitchQueue.process(require.resolve("./stitch.js"));
 
   upscaleQueue.on("active", (job) => {
-    jobs.set(job.data.id, "upscaling", job.id);
+    // Use `save` instead of `set` to override previous job if there's any.
+    jobs.save(job.data.id, {
+      upscaling: job.id
+    })
   })
 
   extractQueue.on("active", (job) => {
