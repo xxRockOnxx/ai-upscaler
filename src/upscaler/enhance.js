@@ -49,9 +49,8 @@ module.exports = async function (job) {
   job.log(`Enhancing ${frames.length} frames`);
 
   for (const [i, frame] of frames.entries()) {
-    job.progress(i / frames.length * 100);
+    job.progress((i + 1) / frames.length * 100);
     job.log(`Enhancing frame ${i + 1} of ${frames.length}`);
-
     await enhanceFrame(
       path.join(job.data.input, frame),
       path.join(job.data.output, frame)
