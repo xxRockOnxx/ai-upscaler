@@ -1,6 +1,20 @@
 module.exports = function getQueue(queue) {
   return async function (request, reply) {
     const queueList = await queue.getAll();
+
+    const inactiveStatus = [
+      "finished",
+      "failed",
+    ]
+
+    Object.keys(queueList).forEach((key) => {
+      const queueItem = queueList[key];
+
+      if (inactiveStatus.includes(queueItem.status)) {
+        delete queueList[key];
+      }
+    });
+
     const total = Object.keys(queueList).length;
 
     // No cookie or invalid queue id
