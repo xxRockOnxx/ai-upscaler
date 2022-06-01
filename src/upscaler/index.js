@@ -37,10 +37,7 @@ function waitForJob(job) {
 
 function createQueue(name, opts) {
   const queue = new Bull(name, opts);
-
   queue.on("error", console.error)
-  queue.on("failed", (job, err) => console.error(err, job.data));
-
   return queue
 }
 

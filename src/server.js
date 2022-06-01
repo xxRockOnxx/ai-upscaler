@@ -117,7 +117,8 @@ async function start() {
   });
 
   upscaler.queue.upscale.on("failed", (job, err) => {
-    console.error("Upscale failed", err);
+    console.error(err, job.data);
+
     queue
       .markAsStatus(job.data.id, "failed")
       .then(() => queue.sort());
