@@ -12,7 +12,7 @@ function enhanceFrame(input, output, setCancel) {
       output,
 
       "-s",
-      "2",
+      "4",
 
       "-f",
       "png",
@@ -23,14 +23,9 @@ function enhanceFrame(input, output, setCancel) {
 
     const command = `${process.env.REAL_ESRGAN_PATH} ${args.join(" ")}`;
 
-    console.log(command);
-
     const proc = exec(command, (code, out, err) => {
-      console.log(out);
-
       if (code) {
-        console.error(err);
-        reject();
+        reject(new Error(err));
       } else {
         resolve();
       }

@@ -21,7 +21,13 @@ const getFrame = require('./http/get-frame');
 async function createServer() {
   const server = fastify({
     logger: {
-      level: 'error',
+      level: "error",
+      prettyPrint: process.env.NODE_ENV === "production"
+          ? false
+          : {
+            translateTime: "HH:MM:ss Z",
+            ignore: "pid,hostname",
+          },
     },
   });
 
@@ -117,7 +123,7 @@ async function start() {
   });
 
   upscaler.queue.upscale.on("failed", (job, err) => {
-    console.error(err, job.data);
+    server.log.error(err, job.data)
 
     queue
       .markAsStatus(job.data.id, "failed")

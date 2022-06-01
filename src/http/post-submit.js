@@ -61,7 +61,7 @@ module.exports = function postSubmit(queue, upscaler) {
     upscaler
       .upscale(id, storage.workDir, metadata, outfile)
       .catch((e) => {
-        console.error(e);
+        request.log.error(e);
         storage.destroy();
         queue
           .markAsStatus(id, "failed")

@@ -16,5 +16,8 @@
     "progress": "^2.0.3",
     "redis": "^4.1.0",
     "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "pino-pretty": "^8.0.0"
   }
 }
