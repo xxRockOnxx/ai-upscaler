@@ -1,3 +1,5 @@
+const ffmpeg = require("fluent-ffmpeg");
+
 function stitchFrames(input, output, metadata, setProgress) {
   return new Promise((resolve, reject) => {
     const framerate = metadata.framerate * 2;
@@ -18,7 +20,12 @@ function stitchFrames(input, output, metadata, setProgress) {
 module.exports = async function (job) {
   console.log("Stitching frames");
   job.progress(0);
-  await stitchFrames(job.data.input, job.data.output, job.data.metadata, job.progress);
+  await stitchFrames(
+    job.data.input,
+    job.data.output,
+    job.data.metadata,
+    job.progress
+  );
   console.log("Stitched frames");
   job.progress(100);
 };
