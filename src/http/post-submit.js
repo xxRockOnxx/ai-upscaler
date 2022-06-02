@@ -32,7 +32,7 @@ module.exports = function postSubmit(queue, upscaler) {
       outfile = await storage.store(data.filename, data.file);
       metadata = await analyze(outfile);
     } catch (e) {
-      await storage.destroy().catch(() => {});
+      await storage.destroy();
       throw e;
     }
 

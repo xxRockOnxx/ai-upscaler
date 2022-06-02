@@ -10,8 +10,6 @@ module.exports = function getFrame() {
       const enhanced = request.query.enhanced === 'true';
       const directory = enhanced ? 'enhanced_frames' : 'frames';
 
-      await fs.promises.access(storage.path(directory));
-
       reply
         .type('image/png')
         .send(fs.createReadStream(storage.path(directory + '/' + request.params.frame)));

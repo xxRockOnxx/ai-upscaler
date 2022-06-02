@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs").promises;
+const fs = require("fs-extra");
 const Bull = require("bull");
 
 function getFrameDir(workDir) {
@@ -49,8 +49,8 @@ function createUpscaler({ jobs, redis }) {
 
   upscaleQueue.process(async (job) => {
     await Promise.all([
-      fs.mkdir(getFrameDir(job.data.workDir)),
-      fs.mkdir(getEnhancedFrameDir(job.data.workDir)),
+      fs.emptyDir(getFrameDir(job.data.workDir)),
+      fs.emptyDir(getEnhancedFrameDir(job.data.workDir)),
     ]);
 
     job.progress(1);
@@ -117,11 +117,9 @@ function createUpscaler({ jobs, redis }) {
 
   upscaleQueue.on("completed", (job, result) => {
     Promise.all([
-      fs.rm(getFrameDir(job.data.workDir), { recursive: true }),
-      fs.rm(getEnhancedFrameDir(job.data.workDir), { recursive: true }),
-    ]).catch((e) => {
-      console.error(e);
-    });
+      fs.remove(getFrameDir(job.data.workDir)),
+      fs.remove(getEnhancedFrameDir(job.data.workDir)),
+    ]);
   })
 
   return {

@@ -3,7 +3,7 @@ const fastify = require('fastify');
 const fastifyCookie = require("@fastify/cookie");
 const fastifyMultipart = require("@fastify/multipart");
 const crypto = require('crypto-random-string');
-const fs = require('fs').promises;
+const fs = require('fs-extra');
 const createQueue = require('./queue')
 const createJobs = require('./jobs');
 const createUpscaler = require('./upscaler');
@@ -119,7 +119,7 @@ async function start() {
       .markAsStatus(job.data.id, "finished")
       .then(() => queue.sort());
 
-    fs.rm(job.data.input)
+    fs.remove(job.data.input)
   });
 
   upscaler.queue.upscale.on("failed", (job, err) => {
