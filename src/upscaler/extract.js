@@ -11,7 +11,6 @@ function extractFrames(input, output, setProgress, setCancel) {
         "-vsync passthrough",
       ])
       .on('progress', ({ percent }) => {
-        console.log(percent);
         setProgress(percent);
       })
       .on("end", resolve)
