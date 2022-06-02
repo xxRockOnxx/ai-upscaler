@@ -115,13 +115,6 @@ function createUpscaler({ jobs, redis }) {
     jobs.set(job.data.id, "stitching", job.id);
   })
 
-  upscaleQueue.on("completed", (job, result) => {
-    Promise.all([
-      fs.remove(getFrameDir(job.data.workDir)),
-      fs.remove(getEnhancedFrameDir(job.data.workDir)),
-    ]);
-  })
-
   upscaleQueue.on("failed", (job, err) => {
     Promise.all([
       fs.remove(getFrameDir(job.data.workDir)),
