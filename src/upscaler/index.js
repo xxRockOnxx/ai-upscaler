@@ -80,7 +80,7 @@ function createUpscaler({ jobs, redis }) {
 
     const extName = path.extname(job.data.input);
     const filename = path.basename(job.data.input, extName);
-    const enhancedName = filename.replace(extName, "_enhanced" + extName);
+    const enhancedName = `${filename}_enhanced${extName}`;
 
     const stitchJob = await stitchQueue.add({
       id: job.data.id,
