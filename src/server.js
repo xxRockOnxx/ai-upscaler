@@ -128,6 +128,8 @@ async function start() {
     queue
       .markAsStatus(job.data.id, "failed")
       .then(() => queue.sort());
+
+    fs.remove(job.data.input);
   });
 }
 
