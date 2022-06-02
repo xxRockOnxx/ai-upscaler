@@ -25,6 +25,7 @@ module.exports = function putQueue(queue) {
       .cookie("queue", id, {
         httpOnly: true,
       })
+      .status(204)
       .send();
 
     setTimeout(async () => {
