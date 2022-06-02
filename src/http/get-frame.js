@@ -6,21 +6,24 @@ module.exports = function getFrame() {
     const id = request.cookies.queue;
     const storage = new Storage(id);
 
-    try {
-      const enhanced = request.query.enhanced === 'true';
-      const directory = enhanced ? 'enhanced_frames' : 'frames';
+    const enhanced = request.query.enhanced === "true";
+    const directory = enhanced ? "enhanced_frames" : "frames";
+    const stream = fs.createReadStream(
+      storage.path(directory + "/" + request.params.frame)
+    );
 
-      reply
-        .type('image/png')
-        .send(fs.createReadStream(storage.path(directory + '/' + request.params.frame)));
-    } catch (e) {
-      if (e.code !== 'ENOENT') {
-        throw e;
+    stream.on("error", (err) => {
+      if (err.code !== "ENOENT") {
+        throw err;
       }
 
+      reply.status(404).send();
+    });
+
+    stream.on("ready", () => {
       reply
-        .status(404)
-        .send();
-    }
+        .type("image/png")
+        .send(stream);
+    })
   }
 }

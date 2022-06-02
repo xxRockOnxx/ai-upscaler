@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server.js"
+    "start": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server.js",
+    "test": "jest"
   },
   "dependencies": {
     "@fastify/cookie": "^6.0.0",
@@ -19,6 +20,7 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
+    "jest": "^28.1.0",
     "pino-pretty": "^8.0.0"
   }
 }
