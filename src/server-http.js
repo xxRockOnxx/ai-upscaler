@@ -4,9 +4,9 @@ const fastifyCookie = require("@fastify/cookie");
 const fastifyMultipart = require("@fastify/multipart");
 const crypto = require('crypto-random-string');
 const fs = require('fs-extra');
+const Bull = require("bull");
 const createQueue = require('./queue')
-const createJobs = require('./jobs');
-const createUpscaler = require('./upscaler');
+const createJobLogger = require('./jobs');
 const getQueue = require('./http/get-queue');
 const putQueue = require('./http/put-queue');
 const postSubmit = require('./http/post-submit');
@@ -22,12 +22,10 @@ async function createServer() {
   const server = fastify({
     logger: {
       level: "error",
-      prettyPrint: process.env.NODE_ENV === "production"
-          ? false
-          : {
-            translateTime: "HH:MM:ss Z",
-            ignore: "pid,hostname",
-          },
+      prettyPrint: {
+        translateTime: "HH:MM:ss Z",
+        ignore: "pid,hostname",
+      },
     },
   });
 
@@ -61,32 +59,30 @@ function createAssertQueue(queue) {
 }
 
 async function start() {
-  const redisClient = createClient({
-    url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
-  });
+  const redisURL = `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
 
-  await redisClient.connect();
+  // This will be used for saving data e.g queue, job logs, etc.
+  const redisDB = createClient({ url: redisURL });
 
-  const queue = createQueue(redisClient);
-  const jobs = createJobs(redisClient);
-  const upscaler = createUpscaler({
-    jobs,
-    redis: {
-      host: process.env.REDIS_HOST,
-      port: process.env.REDIS_PORT,
-    }
-  })
+  // This will be used for publishing to workers e.g for job cancellation.
+  const redisPub = createClient({ url: redisURL });
+
+  await redisDB.connect();
+  await redisPub.connect();
+
+  const queue = createQueue(redisDB);
+  const jobLogger = createJobLogger(redisDB);
+  const upscaleQueue = new Bull("upscale", redisURL);
   const server = await createServer();
 
   server.get('/queue', getQueue(queue));
   server.put('/queue', putQueue(queue));
-  server.put('/cancel', putCancel(queue));
 
   server.route({
     method: "GET",
     url: "/progress",
     preHandler: [createAssertQueue(queue)],
-    handler: getProgress(queue, jobs, upscaler),
+    handler: getProgress(queue, jobLogger),
   });
 
   server.route({
@@ -107,29 +103,43 @@ async function start() {
     method: "POST",
     url: "/submit",
     preHandler: [createAssertQueue(queue)],
-    handler: postSubmit(queue, upscaler),
+    handler: postSubmit(queue, upscaleQueue),
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/cancel",
+    preHandler: [createAssertQueue(queue)],
+    handler: putCancel(redisPub, queue, jobLogger),
   });
 
   await server.listen(3000, '0.0.0.0')
 
-  console.log(`Listening on http://0.0.0.0:3000`);
+  server.log.info(`Listening on http://0.0.0.0:3000`);
 
-  upscaler.queue.upscale.on("completed", (job, result) => {
-    queue
-      .markAsStatus(job.data.id, "finished")
-      .then(() => queue.sort());
+  upscaleQueue.on("global:completed", (job) => {
+    server.log.info("Marking job as completed");
 
-    fs.remove(job.data.input)
+    upscaleQueue
+      .getJob(job)
+      .then((storedJob) => {
+        fs.remove(storedJob.data.input);
+        return queue.markAsStatus(storedJob.data.id, "finished");
+      })
+      .then(() => queue.sort())
   });
 
-  upscaler.queue.upscale.on("failed", (job, err) => {
-    server.log.error(err, job.data)
+  upscaleQueue.on("global:failed", (job, err) => {
+    server.log.error(err);
+    server.log.info("Marking job as failed");
 
-    queue
-      .markAsStatus(job.data.id, "failed")
+    upscaleQueue
+      .getJob(job)
+      .then((storedJob) => {
+        fs.remove(storedJob.data.input);
+        return queue.markAsStatus(storedJob.data.id, "failed");
+      })
       .then(() => queue.sort());
-
-    fs.remove(job.data.input);
   });
 }
 

@@ -1,11 +1,14 @@
 const ffmpeg = require("fluent-ffmpeg");
+const { CancelError } = require("./errors");
 
-function stitchFrames(input, output, metadata, setProgress) {
+function stitchFrames(input, output, metadata, setProgress, onCancel) {
   return new Promise((resolve, reject) => {
     const [a, b] = metadata.r_frame_rate.split("/");
     const framerate = parseInt(a) / parseInt(b);
 
-    ffmpeg(input)
+    let canceled = false;
+
+    const command = ffmpeg(input)
       .inputOptions([`-r ${framerate}`])
       .output(output)
       .outputOptions(["-c:v libx264", "-pix_fmt yuv420p"])
@@ -13,20 +16,32 @@ function stitchFrames(input, output, metadata, setProgress) {
         setProgress(percent);
       })
       .on("end", resolve)
-      .on("error", reject)
-      .run();
+      .on("error", (err) => {
+        if (canceled) {
+          reject(new CancelError(err));
+        } else {
+          reject(err);
+        }
+      });
+
+    onCancel(() => {
+      console.log("Killing ffmpeg process");
+      canceled = true;
+      command.kill();
+    });
+
+    command.run();
   });
 }
 
 module.exports = async function (job) {
-  console.log("Stitching frames");
   job.progress(0);
   await stitchFrames(
     job.data.input,
     job.data.output,
     job.data.metadata,
-    job.progress
+    job.progress,
+    job.onCancel,
   );
-  console.log("Stitched frames");
   job.progress(100);
 };

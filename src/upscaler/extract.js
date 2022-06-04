@@ -1,7 +1,10 @@
 const ffmpeg = require("fluent-ffmpeg");
+const { CancelError } = require("./errors");
 
-function extractFrames(input, output, setProgress, setCancel) {
+function extractFrames(input, output, setProgress, onCancel) {
   return new Promise((resolve, reject) => {
+    let canceled = false;
+
     const command = ffmpeg(input)
       .output(output)
       .outputOptions([
@@ -10,22 +13,35 @@ function extractFrames(input, output, setProgress, setCancel) {
         "-qmax 1",
         "-vsync passthrough",
       ])
-      .on('progress', ({ percent }) => {
+      .on("progress", ({ percent }) => {
         setProgress(percent);
       })
       .on("end", resolve)
-      .on("error", reject);
+      .on("error", (err) => {
+        if (canceled) {
+          reject(new CancelError(err));
+        } else {
+          reject(err);
+        }
+      });
 
-    // setCancel(command.kill);
+    onCancel(() => {
+      console.log("Killing ffmpeg process");
+      canceled = true;
+      command.kill();
+    });
 
     command.run();
   });
 }
 
 module.exports = async function (job) {
-  console.log("Extracting frames");
   job.progress(0);
-  await extractFrames(job.data.input, job.data.output, job.progress);
-  console.log("Extracted frames");
+  await extractFrames(
+    job.data.input,
+    job.data.output,
+    job.progress,
+    job.onCancel,
+  );
   job.progress(100);
 };

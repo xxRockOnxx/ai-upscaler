@@ -77,10 +77,18 @@ You can set `REAL_ESRGAN_PATH` in `package.json` if needed.
 
 - Update environment variables in `package.json` if necessary
 
-- Start the server
+- Start the apps
 
 ```bash
-  yarn start
+  yarn start-http
+  yarn start-worker
+```
+
+You can also just use [pm2](https://pm2.keymetrics.io/) for convenience if you are not using Docker.
+
+```bash
+  pm2 start yarn --name http -- start-http
+  pm2 start yarn --name worker -- start-worker
 ```
 
 The server will listen on port 3000.

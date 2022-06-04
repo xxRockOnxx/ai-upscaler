@@ -54,22 +54,23 @@ module.exports = function postSubmit(queue, upscaler) {
       return;
     }
 
-    await queue.markAsStatus(id, "processing");
+    await upscaler.add({
+      id,
+      metadata,
+      workDir: storage.workDir,
+      input: outfile,
+    })
+      .then(() => {
+        queue.markAsStatus(id, "processing");
 
-    // No need to wait for this to finish.
-    // This is a long running process.
-    upscaler
-      .upscale(id, storage.workDir, metadata, outfile)
+        reply.send({
+          status: "processing",
+        });
+      })
       .catch((e) => {
+        request.log.error("Failed to add job to queue");
         request.log.error(e);
         storage.destroy();
-        queue
-          .markAsStatus(id, "failed")
-          .then(() => queue.sort())
       })
-
-    reply.send({
-      status: "processing",
-    });
   };
 };

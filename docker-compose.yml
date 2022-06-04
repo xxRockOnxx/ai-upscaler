@@ -2,13 +2,27 @@ version: '3'
 
 services:
   node:
+    image: node:18
+    depends_on:
+      - redis
+      - node_worker
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./node_modules:/app/node_modules
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: node /app/src/server-http.js
+
+  node_worker:
     build:
       context: .
       dockerfile: Dockerfile_node
     depends_on:
       - redis
-    ports:
-      - "3000:3000"
     working_dir: /app
     volumes:
       - ./src:/app/src
@@ -20,7 +34,7 @@ services:
       - REAL_ESRGAN_PATH=/app/realesrgan/realesrgan-ncnn-vulkan
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    command: node /app/src/server.js
+    command: node /app/src/server-worker.js
 
   redis:
     image: redis:7

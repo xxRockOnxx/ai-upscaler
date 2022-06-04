@@ -1,8 +1,9 @@
-const fs = require('fs').promises;
-const path = require('path');
-const exec = require('child_process').exec
+const fs = require("fs").promises;
+const path = require("path");
+const exec = require("child_process").exec;
+const { CancelError } = require("./errors");
 
-function enhanceFrame(input, output, setCancel) {
+function enhanceFrame(input, output, onCancel) {
   return new Promise((resolve, reject) => {
     const args = [
       "-i",
@@ -22,36 +23,35 @@ function enhanceFrame(input, output, setCancel) {
     ];
 
     const command = `${process.env.REAL_ESRGAN_PATH} ${args.join(" ")}`;
+    let canceled = false;
 
     const proc = exec(command, (code, out, err) => {
       if (code) {
-        reject(new Error(err));
+        const computedError = canceled ? new CancelError(err) : new Error(err);
+        reject(computedError);
       } else {
         resolve();
       }
     });
 
-    // setCancel(() => {
-    //   proc.kill();
-    // });
+    onCancel(() => {
+      console.log("Killing enhance process");
+      canceled = true;
+      proc.kill();
+    });
   });
 }
 
 module.exports = async function (job) {
   const frames = await fs.readdir(job.data.input);
 
-  console.log(`Enhancing ${frames.length} frames`);
-  job.log(`Enhancing ${frames.length} frames`);
-
   for (const [i, frame] of frames.entries()) {
-    job.progress((i + 1) / frames.length * 100);
-    job.log(`Enhancing frame ${i + 1} of ${frames.length}`);
     await enhanceFrame(
       path.join(job.data.input, frame),
-      path.join(job.data.output, frame)
+      path.join(job.data.output, frame),
+      job.onCancel
     );
-  }
 
-  console.log("Enhancement complete");
-  job.log("Enhancement complete");
-}
+    job.progress(((i + 1) / frames.length) * 100);
+  }
+};

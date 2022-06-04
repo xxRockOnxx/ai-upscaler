@@ -12,7 +12,7 @@ async function getJobDetails(queue, id) {
   };
 }
 
-module.exports = function getProgress(queue, jobs, upscaler) {
+module.exports = function getProgress(queue, jobs) {
   return async function (request, reply) {
     const queueList = await queue.getAll();
     const queueItem = queueList[request.cookies.queue];
@@ -31,26 +31,6 @@ module.exports = function getProgress(queue, jobs, upscaler) {
       });
     }
 
-    const response = {
-      status: "processing",
-    };
-
-    if (job.upscaling) {
-      response.upscaling = await getJobDetails(upscaler.queue.upscale, job.upscaling);
-    }
-
-    if (job.extracting) {
-      response.extracting = await getJobDetails(upscaler.queue.extract, job.extracting);
-    }
-
-    if (job.enhancing) {
-      response.enhancing = await getJobDetails(upscaler.queue.enhance, job.enhancing);
-    }
-
-    if (job.stitching) {
-      response.stitching = await getJobDetails(upscaler.queue.stitch, job.stitching);
-    }
-
-    reply.send(response);
+    reply.send(job.progress);
   };
 };

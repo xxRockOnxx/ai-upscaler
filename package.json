@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server.js",
+    "start-http": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 node src/server-http.js",
+    "start-worker": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server-worker.js",
     "test": "jest"
   },
   "dependencies": {
@@ -17,7 +18,8 @@
     "fs-extra": "^10.1.0",
     "progress": "^2.0.3",
     "redis": "^4.1.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "xstate": "^4.32.1"
   },
   "devDependencies": {
     "jest": "^28.1.0",
