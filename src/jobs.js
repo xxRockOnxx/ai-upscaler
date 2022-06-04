@@ -5,9 +5,9 @@ module.exports = function (redis) {
       return raw ? JSON.parse(raw) : null;
     },
 
-    async set(id, job, jobId) {
+    async set(id, key, value) {
       const data = (await this.getById(id)) || {};
-      data[job] = jobId;
+      data[key] = value;
       await this.save(id, data);
     },
 
