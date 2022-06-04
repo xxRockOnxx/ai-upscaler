@@ -1,17 +1,3 @@
-async function getJobDetails(queue, id) {
-  const [jobDetails, logs] = await Promise.all([
-    queue.getJob(id),
-    queue.getJobLogs(id, 0, 0, false),
-  ]);
-
-  return {
-    progress: jobDetails?.progress() ?? 0,
-    startedAt: jobDetails?.timestamp ?? null,
-    finishedAt: jobDetails?.finishedOn ?? null,
-    log: logs.logs[0],
-  };
-}
-
 module.exports = function getProgress(queue, jobs) {
   return async function (request, reply) {
     const queueList = await queue.getAll();
