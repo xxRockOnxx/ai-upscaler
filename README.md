@@ -5,8 +5,9 @@ A web-based video upscaling service powered by [Real-ESRGAN](https://github.com/
 
 Plans:
 
-- [ ] Support Waifu2x
-- [ ] Support Anime4K
+- [ ] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
+- [ ] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor
+- [ ] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
 
 I plan on hosting a forever free web-based upscaling service (both image and video)
 so people who don't know how to setup AI-stuff and/or doesn't have the GPU power
