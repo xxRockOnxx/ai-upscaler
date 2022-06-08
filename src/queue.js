@@ -3,7 +3,7 @@ class QueueError extends Error {
     super(message);
     this.name = 'QueueError';
   }
-}
+};
 
 // Valid status are:
 // idle
@@ -26,12 +26,12 @@ module.exports = function createQueue(redis) {
       return raw;
     },
 
-    async join(id) {
+    async join(id, forced = false) {
       const list = await this.getAll();
 
       if (!list[id]) {
         const position = Object.keys(list).length + 1;
-        const status = position === 1 ? "ready" : "waiting";
+        const status = position === 1 ? 'ready' : 'waiting';
 
         await this.save(id, {
           status,
@@ -42,24 +42,21 @@ module.exports = function createQueue(redis) {
         return;
       }
 
-      const joinableStatus = [
-        "idle",
-        "finished",
-        "failed",
-      ]
-
-      if (!joinableStatus.includes(list[id].status)) {
-        throw new QueueError("Already in queue");
+      if (['waiting', 'ready', 'processing'].includes(list[id].status)) {
+        throw new QueueError('Already in queue');
       }
 
-      const position = Object.keys(list).length;
-      const status = position === 1 ? "ready" : "waiting";
+      if (['failed', 'finished'].includes(list[id].status) && !forced) {
+        throw new QueueError('Job has already reached a final state. Cannot join queue unless forced.');
+      }
 
-      await this.save(id, {
-        status,
-        position,
-        updatedAt: Date.now(),
-      });
+      if (['failed', 'finished'].includes(list[id].status) && forced) {
+        await redis.hDel('queue', id);
+        await this.join(id);
+        return;
+      }
+
+      throw new QueueError('Unknow status');
     },
 
     async refresh(id) {
@@ -70,10 +67,8 @@ module.exports = function createQueue(redis) {
         throw new QueueError('Queue item not found');
       }
 
-      const refreshableStatus = ['waiting', 'ready', 'processing'];
-
-      if (!refreshableStatus.includes(item.status)) {
-        throw new QueueError('Queue item not in refreshable status');
+      if (['failed', 'finished'].includes(list[id].status)) {
+        throw new QueueError('Job has already reached a final state. Cannot join queue unless forced.');
       }
 
       await this.save(id, {
@@ -103,27 +98,39 @@ module.exports = function createQueue(redis) {
 
     async removeIfExpired(id) {
       const list = await this.getAll();
-      const item = list[id] ?? {};
-      const updatedAt = new Date(item.updatedAt);
-      const expiryWaiting = 1000 * 60;
-      const expiryFinished = 1000 * 60 * 60;
 
-      const expirableStatus = [
+      // Nothing to do.
+      // No need to throw an error. Should be idempontent.
+      if (!list[id]) {
+        return true;
+      }
+
+      const item = list[id];
+      const updatedAt = new Date(item.updatedAt);
+
+      // Fixed time for now.
+      const expiryOngoing = 1000 * 60;
+      const expiryFinal = 1000 * 60 * 60;
+
+      const ongoingStatus = [
         'waiting',
         'ready',
         'processing',
       ];
 
-      if (
-        expirableStatus.includes(item.status)
-        && updatedAt < Date.now() - expiryWaiting
-      ) {
+      if (ongoingStatus.includes(item.status) && updatedAt < Date.now() - expiryOngoing) {
         await redis.hDel('queue', id);
         return true;
       }
 
-      // Figure out a way to separate download expiry from queue expiry
-      if (item.status === 'finished' && updatedAt < Date.now() - expiryFinished) {
+      // Make final status available for a longer time
+      // to allow users to see about the status.
+      const finalStatus = [
+        'failed',
+        'finished',
+      ];
+
+      if (finalStatus.includes(item.status) && updatedAt < Date.now() - expiryFinal) {
         await redis.hDel('queue', id);
         return true;
       }
@@ -149,3 +156,5 @@ module.exports = function createQueue(redis) {
     },
   };
 };
+
+module.exports.QueueError = QueueError;

@@ -29,10 +29,7 @@ module.exports = function createPutQueue(queue) {
     setTimeout(async () => {
       if (await queue.removeIfExpired(id)) {
         queue.sort();
-
-        Storage.delete(id).catch(() => {
-          // The directory might not have existed yet
-        });
+        new Storage(id).destroy();
       }
     }, 1000 * 60);
   };

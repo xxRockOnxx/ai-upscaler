@@ -8,11 +8,6 @@ const pipeline = util.promisify(require('stream').pipeline);
 const DIR_PREFIX = 'ai-upscaler-';
 
 module.exports = class Storage {
-  static async delete(id) {
-    const tmp = path.join(os.tmpdir(), DIR_PREFIX + id);
-    await fs.remove(tmp);
-  }
-
   constructor(id) {
     this.workDir = path.join(os.tmpdir(), DIR_PREFIX + id);
   }
