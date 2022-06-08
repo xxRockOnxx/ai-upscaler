@@ -21,19 +21,20 @@ const getFrame = require('./http/get-frame');
 async function createServer() {
   const server = fastify({
     logger: {
-      level: "error",
+      level: 'info',
       prettyPrint: {
-        translateTime: "HH:MM:ss Z",
-        ignore: "pid,hostname",
+        translateTime: 'HH:MM:ss Z',
+        ignore: 'pid,hostname',
       },
     },
+    disableRequestLogging: true,
   });
 
   await server.register(fastifyCookie, {
     secret: crypto({ length: 32 }),
     parserOptions: {
       signed: true,
-    }
+    },
   });
 
   await server.register(fastifyMultipart, {
