@@ -1,12 +1,12 @@
-const { createMachine, assign, send } = require("xstate");
-const fs = require("fs-extra");
-const path = require("path");
-const extract = require("../upscaler/extract");
-const enhance = require("../upscaler/enhance");
-const stitch = require("../upscaler/stitch");
+const { createMachine, assign, send } = require('xstate');
+const fs = require('fs-extra');
+const path = require('path');
+const extract = require('../upscaler/extract');
+const enhance = require('../upscaler/enhance');
+const stitch = require('../upscaler/stitch');
 
 /**
- * This is a utility function that creates an XState callback service.
+ * This is a utility function that creates an XState callback-style service.
  * This add progress tracker and cancel callback to the service.
  *
  * @param {string} name - Name of service that will be used when updating progress.
@@ -16,14 +16,14 @@ const stitch = require("../upscaler/stitch");
  */
 function createService(name, fn, dataFn) {
   // https://xstate.js.org/docs/guides/communication.html#invoking-callbacks
-  return function (context) {
-    return function (send, receive) {
+  return function service(context) {
+    return function callback(sendParent, receive) {
       console.log(`${name} service started`);
 
       let cancelFn = () => {};
 
       receive((e) => {
-        if (e.type === "CANCEL") {
+        if (e.type === 'CANCEL') {
           cancelFn();
         }
       });
@@ -32,8 +32,8 @@ function createService(name, fn, dataFn) {
         data: dataFn(context),
 
         progress(progress) {
-          send({
-            type: "PROGRESS",
+          sendParent({
+            type: 'PROGRESS',
             progress: {
               ...context.progress,
               [name]: progress,
@@ -41,31 +41,31 @@ function createService(name, fn, dataFn) {
           });
         },
 
-        onCancel(fn) {
-          cancelFn = fn
+        onCancel(jobCancelFn) {
+          cancelFn = jobCancelFn;
         },
       })
         .then(() => {
-          send({
-            type: "DONE",
+          sendParent({
+            type: 'DONE',
           });
         })
         .catch((e) => {
           console.error(e);
-          send({
-            type: "ERROR",
-            canceled: e.name === "CancelError",
+          sendParent({
+            type: 'ERROR',
+            canceled: e.name === 'CancelError',
           });
-        })
+        });
     };
   };
 }
 
 module.exports = createMachine(
   {
-    id: "upscaler",
+    id: 'upscaler',
 
-    initial: "prepare",
+    initial: 'prepare',
 
     context: {
       workDir: null,
@@ -89,89 +89,89 @@ module.exports = createMachine(
     states: {
       prepare: {
         invoke: {
-          id: "prepare",
-          src: "prepare",
+          id: 'prepare',
+          src: 'prepare',
           onDone: {
-            target: "extract",
+            target: 'extract',
           },
           onError: {
-            target: "failed",
+            target: 'failed',
           },
         },
       },
 
       extract: {
         invoke: {
-          id: "extract",
-          src: "extract",
+          id: 'extract',
+          src: 'extract',
         },
 
         on: {
           DONE: {
-            target: "enhance",
+            target: 'enhance',
           },
 
           ERROR: {
-            target: "failed",
+            target: 'failed',
           },
 
           CANCEL: {
-            actions: send({ type: "CANCEL" }, { to: "extract" }),
+            actions: send({ type: 'CANCEL' }, { to: 'extract' }),
           },
         },
       },
 
       enhance: {
         invoke: {
-          id: "enhance",
-          src: "enhance",
+          id: 'enhance',
+          src: 'enhance',
         },
 
         on: {
           DONE: {
-            target: "stitch",
+            target: 'stitch',
           },
 
           ERROR: {
-            target: "failed",
+            target: 'failed',
           },
 
           CANCEL: {
-            actions: send({ type: "CANCEL" }, { to: "enhance" }),
+            actions: send({ type: 'CANCEL' }, { to: 'enhance' }),
           },
         },
       },
 
       stitch: {
         invoke: {
-          id: "stitch",
-          src: "stitch",
+          id: 'stitch',
+          src: 'stitch',
         },
 
         on: {
           DONE: {
-            target: "done",
+            target: 'done',
           },
 
           ERROR: {
-            target: "failed",
+            target: 'failed',
           },
 
           CANCEL: {
-            actions: send({ type: "CANCEL" }, { to: "stitch" }),
+            actions: send({ type: 'CANCEL' }, { to: 'stitch' }),
           },
         },
       },
 
       done: {
-        type: "final",
+        type: 'final',
       },
 
       failed: {
-        type: "final",
+        type: 'final',
         data: {
           canceled: (ctx, evt) => evt.canceled,
-        }
+        },
       },
     },
   },
@@ -179,31 +179,31 @@ module.exports = createMachine(
     services: {
       prepare(context) {
         return Promise.all([
-          fs.emptyDir(path.join(context.workDir, "frames")),
-          fs.emptyDir(path.join(context.workDir, "enhanced_frames")),
+          fs.emptyDir(path.join(context.workDir, 'frames')),
+          fs.emptyDir(path.join(context.workDir, 'enhanced_frames')),
         ]);
       },
 
-      extract: createService("extract", extract, (context) => ({
+      extract: createService('extract', extract, (context) => ({
         input: context.input,
-        output: path.join(context.workDir, "frames", "frame_%03d.png"),
+        output: path.join(context.workDir, 'frames', 'frame_%03d.png'),
       })),
 
-      enhance: createService("enhance", enhance, (context) => ({
-        input: path.join(context.workDir, "frames"),
-        output: path.join(context.workDir, "enhanced_frames"),
+      enhance: createService('enhance', enhance, (context) => ({
+        input: path.join(context.workDir, 'frames'),
+        output: path.join(context.workDir, 'enhanced_frames'),
       })),
 
-      stitch: createService("stitch", stitch, (context) => {
-        const extName = path.extname(job.data.input);
-        const filename = path.basename(job.data.input, extName);
+      stitch: createService('stitch', stitch, (context) => {
+        const extName = path.extname(context.input);
+        const filename = path.basename(context.input, extName);
         const enhancedName = `${filename}_enhanced${extName}`;
 
         return {
           input: path.join(
             context.workDir,
-            "enhanced_frames",
-            "frame_%03d.png"
+            'enhanced_frames',
+            'frame_%03d.png',
           ),
 
           output: path.join(context.workDir, enhancedName),
@@ -212,5 +212,5 @@ module.exports = createMachine(
         };
       }),
     },
-  }
+  },
 );

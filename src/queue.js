@@ -1,7 +1,7 @@
 class QueueError extends Error {
   constructor(message) {
     super(message);
-    this.name = "QueueError";
+    this.name = 'QueueError';
   }
 }
 
@@ -15,8 +15,10 @@ class QueueError extends Error {
 module.exports = function createQueue(redis) {
   return {
     async getAll() {
-      const raw = await redis.hGetAll("queue");
+      const raw = await redis.hGetAll('queue');
 
+      // Redis returns null Object so there's no prototype.
+      // eslint-disable-next-line no-restricted-syntax,guard-for-in
       for (const key in raw) {
         raw[key] = JSON.parse(raw[key]);
       }
@@ -65,19 +67,19 @@ module.exports = function createQueue(redis) {
       const item = list[id];
 
       if (!item) {
-        throw new QueueError("Queue item not found");
+        throw new QueueError('Queue item not found');
       }
 
-      const refreshableStatus = ["waiting", "ready", "processing"];
+      const refreshableStatus = ['waiting', 'ready', 'processing'];
 
       if (!refreshableStatus.includes(item.status)) {
-        throw new QueueError("Queue item not in refreshable status");
+        throw new QueueError('Queue item not in refreshable status');
       }
 
       await this.save(id, {
         ...item,
         updatedAt: Date.now(),
-      })
+      });
     },
 
     async markAsStatus(id, status) {
@@ -85,18 +87,18 @@ module.exports = function createQueue(redis) {
       const item = list[id];
 
       if (!item) {
-        throw new QueueError("Queue item not found");
+        throw new QueueError('Queue item not found');
       }
 
       await this.save(id, {
         ...item,
         status,
         updatedAt: Date.now(),
-      })
+      });
     },
 
     async save(id, data) {
-      await redis.hSet("queue", id, JSON.stringify(data));
+      await redis.hSet('queue', id, JSON.stringify(data));
     },
 
     async removeIfExpired(id) {
@@ -107,24 +109,23 @@ module.exports = function createQueue(redis) {
       const expiryFinished = 1000 * 60 * 60;
 
       const expirableStatus = [
-        "waiting",
-        "ready",
-        "processing",
+        'waiting',
+        'ready',
+        'processing',
       ];
 
       if (
-        expirableStatus.includes(item.status) &&
-        updatedAt < Date.now() - expiryWaiting
+        expirableStatus.includes(item.status)
+        && updatedAt < Date.now() - expiryWaiting
       ) {
-        await redis.hDel("queue", id);
+        await redis.hDel('queue', id);
         return true;
       }
 
-      // Once finished, we should update back to idle so they can join queue again.
       // Figure out a way to separate download expiry from queue expiry
       if (item.status === 'finished' && updatedAt < Date.now() - expiryFinished) {
-        await redis.hDel("queue", id);
-        return true
+        await redis.hDel('queue', id);
+        return true;
       }
 
       return false;
@@ -134,17 +135,17 @@ module.exports = function createQueue(redis) {
       const list = await this.getAll();
 
       await Object.keys(list)
-        .filter((id) => list[id].status === "waiting")
+        .filter((id) => list[id].status === 'waiting')
         .sort((a, b) => list[a].position - list[b].position)
         .map((id, index) => {
           list[id].position = index + 1;
 
           if (list[id].position === 1) {
-            list[id].status = "ready";
+            list[id].status = 'ready';
           }
 
-          return this.save(id, list[id])
+          return this.save(id, list[id]);
         });
     },
   };
-}
+};

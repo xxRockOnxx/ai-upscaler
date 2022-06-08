@@ -1,11 +1,11 @@
-const createClient = require('redis').createClient;
+const { createClient } = require('redis');
 const fastify = require('fastify');
-const fastifyCookie = require("@fastify/cookie");
-const fastifyMultipart = require("@fastify/multipart");
+const fastifyCookie = require('@fastify/cookie');
+const fastifyMultipart = require('@fastify/multipart');
 const crypto = require('crypto-random-string');
 const fs = require('fs-extra');
-const Bull = require("bull");
-const createQueue = require('./queue')
+const Bull = require('bull');
+const createQueue = require('./queue');
 const createJobLogger = require('./jobs');
 const getQueue = require('./http/get-queue');
 const putQueue = require('./http/put-queue');
@@ -45,15 +45,15 @@ async function createServer() {
     },
   });
 
-  return server
+  return server;
 }
 
 function createAssertQueue(queue) {
-  return async function(request, reply) {
+  return async function assertQueue(request, reply) {
     const queueList = await queue.getAll();
 
     if (!request.cookies.queue || !queueList[request.cookies.queue]) {
-      reply.code(400).send("Not in queue or invalid queue id");
+      reply.code(400).send('Not in queue or invalid queue id');
     }
   };
 }
@@ -72,75 +72,73 @@ async function start() {
 
   const queue = createQueue(redisDB);
   const jobLogger = createJobLogger(redisDB);
-  const upscaleQueue = new Bull("upscale", redisURL);
+  const upscaleQueue = new Bull('upscale', redisURL);
   const server = await createServer();
 
   server.get('/queue', getQueue(queue));
   server.put('/queue', putQueue(queue));
 
   server.route({
-    method: "GET",
-    url: "/progress",
+    method: 'GET',
+    url: '/progress',
     preHandler: [createAssertQueue(queue)],
     handler: getProgress(queue, jobLogger),
   });
 
   server.route({
-    method: "GET",
-    url: "/frames",
+    method: 'GET',
+    url: '/frames',
     preHandler: [createAssertQueue(queue)],
     handler: getFrames(),
   });
 
   server.route({
-    method: "GET",
-    url: "/frame/:frame",
+    method: 'GET',
+    url: '/frame/:frame',
     preHandler: [createAssertQueue(queue)],
     handler: getFrame(),
   });
 
   server.route({
-    method: "POST",
-    url: "/submit",
+    method: 'POST',
+    url: '/submit',
     preHandler: [createAssertQueue(queue)],
     handler: postSubmit(queue, upscaleQueue),
   });
 
   server.route({
-    method: "PUT",
-    url: "/cancel",
+    method: 'PUT',
+    url: '/cancel',
     preHandler: [createAssertQueue(queue)],
     handler: putCancel(redisPub, queue, jobLogger),
   });
 
-  await server.listen(3000, '0.0.0.0')
+  await server.listen(3000, '0.0.0.0');
 
-  server.log.info(`Listening on http://0.0.0.0:3000`);
-
-  upscaleQueue.on("global:completed", (job) => {
-    server.log.info("Marking job as completed");
+  upscaleQueue.on('global:completed', (job) => {
+    server.log.info('Marking job as completed');
 
     upscaleQueue
       .getJob(job)
       .then((storedJob) => {
         fs.remove(storedJob.data.input);
-        return queue.markAsStatus(storedJob.data.id, "finished");
+        return queue.markAsStatus(storedJob.data.id, 'finished');
       })
-      .then(() => queue.sort())
+      .then(() => queue.sort());
   });
 
-  upscaleQueue.on("global:failed", (job, err) => {
+  upscaleQueue.on('global:failed', (job, err) => {
     server.log.error(err);
-    server.log.info("Marking job as failed");
+    server.log.info('Marking job as failed');
 
     upscaleQueue
       .getJob(job)
       .then((storedJob) => {
         fs.remove(storedJob.data.input);
-        return queue.markAsStatus(storedJob.data.id, "failed");
+        return queue.markAsStatus(storedJob.data.id, 'failed');
       })
       .then(() => queue.sort());
   });
 }
 
-start()
+start();

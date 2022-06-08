@@ -1,20 +1,24 @@
-module.exports = function getProgress(queue, jobs) {
-  return async function (request, reply) {
+module.exports = function createGetProgress(queue, jobs) {
+  return async function getProgress(request, reply) {
     const queueList = await queue.getAll();
     const queueItem = queueList[request.cookies.queue];
 
-    if (!["processing", "finished"].includes(queueItem.status)) {
-      return reply.send({
+    if (!['processing', 'finished'].includes(queueItem.status)) {
+      reply.send({
         status: queueItem.status,
       });
+
+      return;
     }
 
     const job = await jobs.getById(request.cookies.queue);
 
     if (!job) {
-      return reply.send({
-        status: "No data",
+      reply.send({
+        status: 'No data',
       });
+
+      return;
     }
 
     reply.send(job.progress);

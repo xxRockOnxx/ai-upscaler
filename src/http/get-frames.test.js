@@ -1,8 +1,8 @@
 const fastify = require('fastify');
 const cookies = require('@fastify/cookie');
-const fs = require("fs-extra");
+const fs = require('fs-extra');
 const handler = require('./get-frames');
-const Storage = require("../storage");
+const Storage = require('../storage');
 
 describe('get-frames', () => {
   /**
@@ -13,13 +13,13 @@ describe('get-frames', () => {
   beforeAll(async () => {
     app = fastify();
     await app.register(cookies);
-    app.get("/frames", handler());
+    app.get('/frames', handler());
   });
 
   it('should return empty array if directory/file does not exists', async () => {
     const response = await app.inject({
-      method: "GET",
-      url: "/frames",
+      method: 'GET',
+      url: '/frames',
     });
 
     expect(response.statusCode).toBe(200);
@@ -27,22 +27,22 @@ describe('get-frames', () => {
   });
 
   it('should return array of enhanced frames', async () => {
-    const storage = new Storage("test");
+    const storage = new Storage('test');
 
     try {
       await storage.initialize();
       await storage.mkdir('enhanced_frames');
       await fs.copy(
-        __dirname + "/__tests__/image.jpg",
-        storage.path("enhanced_frames/frame.png")
+        `${__dirname}/__tests__/image.jpg`,
+        storage.path('enhanced_frames/frame.png'),
       );
 
       const response = await app.inject({
-        method: "GET",
-        url: "/frames",
+        method: 'GET',
+        url: '/frames',
         cookies: {
-          queue: "test",
-        }
+          queue: 'test',
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -51,4 +51,4 @@ describe('get-frames', () => {
       await storage.destroy();
     }
   });
-})
+});

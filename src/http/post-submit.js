@@ -1,20 +1,20 @@
-const analyze = require("../analyze");
-const validator = require("../validator");
-const Storage = require("../storage");
+const analyze = require('../analyze');
+const validator = require('../validator');
+const Storage = require('../storage');
 
-module.exports = function postSubmit(queue, upscaler) {
-  return async function (request, reply) {
+module.exports = function createPostSubmit(queue, upscaler) {
+  return async function postSubmit(request, reply) {
     const id = request.cookies.queue;
     const queueList = await queue.getAll();
     const queueItem = queueList[id];
 
     if (queueItem.position !== 1) {
-      reply.code(400).send("Waiting turn");
+      reply.code(400).send('Waiting turn');
       return;
     }
 
-    if (queueItem.status === "processing") {
-      reply.code(400).send("Already processing");
+    if (queueItem.status === 'processing') {
+      reply.code(400).send('Already processing');
       return;
     }
 
@@ -42,11 +42,11 @@ module.exports = function postSubmit(queue, upscaler) {
     });
 
     if (!validation.validDuration) {
-      errors.push("Duration currently only supports 5 minutes.");
+      errors.push('Duration currently only supports 5 minutes.');
     }
 
     if (!validation.validHeight) {
-      errors.push("Height currently only supports up to 720p.");
+      errors.push('Height currently only supports up to 720p.');
     }
 
     if (errors.length > 0) {
@@ -54,23 +54,24 @@ module.exports = function postSubmit(queue, upscaler) {
       return;
     }
 
-    await upscaler.add({
-      id,
-      metadata,
-      workDir: storage.workDir,
-      input: outfile,
-    })
+    await upscaler
+      .add({
+        id,
+        metadata,
+        workDir: storage.workDir,
+        input: outfile,
+      })
       .then(() => {
-        queue.markAsStatus(id, "processing");
+        queue.markAsStatus(id, 'processing');
 
         reply.send({
-          status: "processing",
+          status: 'processing',
         });
       })
       .catch((e) => {
-        request.log.error("Failed to add job to queue");
+        request.log.error('Failed to add job to queue');
         request.log.error(e);
         storage.destroy();
-      })
+      });
   };
 };

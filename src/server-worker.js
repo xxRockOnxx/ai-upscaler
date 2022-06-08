@@ -1,9 +1,8 @@
-const createClient = require("redis").createClient;
-const interpret = require("xstate").interpret;
-const Bull = require("bull");
-const createJobLogger = require("./jobs");
-const upscaler = require("./xstate/upscaler");
-require('redis').Redis
+const { createClient } = require('redis');
+const { interpret } = require('xstate');
+const Bull = require('bull');
+const createJobLogger = require('./jobs');
+const upscaler = require('./xstate/upscaler');
 
 /**
  * @param {import("./jobs")} jobLogger
@@ -12,7 +11,7 @@ require('redis').Redis
 function main(jobLogger, queue) {
   // Reuse Bull's redis pubsub for listening
   // to our custom event `cancel`.
-  queue.eclient.subscribe("cancel", (err) => {
+  queue.eclient.subscribe('cancel', (err) => {
     if (err) {
       throw err;
     }
@@ -24,7 +23,7 @@ function main(jobLogger, queue) {
         workDir: job.data.workDir,
         input: job.data.input,
         metadata: job.data.metadata,
-      })
+      }),
     );
 
     // `job.data.id` represents who owns the job (could be user id).
@@ -34,7 +33,7 @@ function main(jobLogger, queue) {
     });
 
     function cancelHandler(channel, data) {
-      if (channel !== "cancel") {
+      if (channel !== 'cancel') {
         return;
       }
 
@@ -42,35 +41,35 @@ function main(jobLogger, queue) {
         return;
       }
 
-      interpreter.send("CANCEL");
+      interpreter.send('CANCEL');
     }
 
-    queue.eclient.on("message", cancelHandler)
+    queue.eclient.on('message', cancelHandler);
 
     await new Promise((resolve, reject) => {
       interpreter
         .onEvent((event) => {
-          if (event.type === "PROGRESS") {
+          if (event.type === 'PROGRESS') {
             jobLogger.set(
               job.data.id,
-              "progress",
-              interpreter.state.context.progress
+              'progress',
+              interpreter.state.context.progress,
             );
           }
         })
         .onDone((evt) => {
           interpreter.stop();
-          queue.eclient.off("message", cancelHandler);
-          if (interpreter.state.value === "done") {
+          queue.eclient.off('message', cancelHandler);
+          if (interpreter.state.value === 'done') {
             resolve();
           } else if (evt.data.canceled) {
-            reject(new Error("Job canceled"));
+            reject(new Error('Job canceled'));
           } else {
-            reject(new Error("Unexpected error occured"));
+            reject(new Error('Unexpected error occured while processing'));
           }
         })
         .start();
-    })
+    });
   });
 }
 
@@ -78,7 +77,7 @@ if (require.main === module) {
   const redisURL = `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
   const redisDB = createClient({ url: redisURL });
   const jobLogger = createJobLogger(redisDB);
-  const upscaleQueue = new Bull("upscale", redisURL);
+  const upscaleQueue = new Bull('upscale', redisURL);
 
   redisDB.connect();
 

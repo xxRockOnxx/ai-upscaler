@@ -1,11 +1,11 @@
-module.exports = function getQueue(queue) {
-  return async function (request, reply) {
+module.exports = function createGetQueue(queue) {
+  return async function getQueue(request, reply) {
     const queueList = await queue.getAll();
 
     const inactiveStatus = [
-      "finished",
-      "failed",
-    ]
+      'finished',
+      'failed',
+    ];
 
     Object.keys(queueList).forEach((key) => {
       const queueItem = queueList[key];
@@ -22,7 +22,7 @@ module.exports = function getQueue(queue) {
       return reply.send({
         total,
         position: null,
-        status: "idle",
+        status: 'idle',
       });
     }
 

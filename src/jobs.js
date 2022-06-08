@@ -1,7 +1,7 @@
-module.exports = function (redis) {
+module.exports = function jobs(redis) {
   return {
     async getById(id) {
-      const raw = await redis.hGet("jobs", id);
+      const raw = await redis.hGet('jobs', id);
       return raw ? JSON.parse(raw) : null;
     },
 
@@ -12,7 +12,7 @@ module.exports = function (redis) {
     },
 
     async save(id, data) {
-      await redis.hSet("jobs", id, JSON.stringify(data));
-    }
-  }
-}
+      await redis.hSet('jobs', id, JSON.stringify(data));
+    },
+  };
+};

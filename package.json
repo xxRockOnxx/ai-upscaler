@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  },
   "scripts": {
     "start-http": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 node src/server-http.js",
     "start-worker": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server-worker.js",
+    "lint": "eslint --ignore-path .gitignore src",
     "test": "jest"
   },
   "dependencies": {
@@ -22,6 +26,11 @@
     "xstate": "^4.32.1"
   },
   "devDependencies": {
+    "eslint": "^8.17.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-jest": "^26.5.3",
+    "eslint-plugin-node": "^11.1.0",
     "jest": "^28.1.0",
     "pino-pretty": "^8.0.0"
   }
