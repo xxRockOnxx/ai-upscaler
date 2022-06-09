@@ -16,8 +16,9 @@ module.exports = class Storage {
     return path.join(this.workDir, relativePath);
   }
 
-  initialize() {
-    return fs.emptyDir(this.workDir);
+  async initialize() {
+    await fs.emptyDir(this.workDir);
+    return this;
   }
 
   async store(relativePath, stream) {
@@ -26,8 +27,9 @@ module.exports = class Storage {
     return outfile;
   }
 
-  mkdir(relativePath) {
-    return fs.mkdir(this.path(relativePath));
+  async mkdir(relativePath) {
+    await fs.mkdir(this.path(relativePath));
+    return this;
   }
 
   destroy() {

@@ -10,7 +10,7 @@
     "start-http": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 node src/server-http.js",
     "start-worker": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server-worker.js",
     "lint": "eslint --ignore-path .gitignore src",
-    "test": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 jest"
+    "test": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 jest --runInBand --coverage"
   },
   "dependencies": {
     "@fastify/cookie": "^6.0.0",
@@ -20,6 +20,7 @@
     "fastify": "^3.29.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-extra": "^10.1.0",
+    "mmmagic": "^0.5.3",
     "progress": "^2.0.3",
     "redis": "^4.1.0",
     "uuid": "^8.3.2",
@@ -32,6 +33,7 @@
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-jest": "^26.5.3",
     "eslint-plugin-node": "^11.1.0",
+    "form-data": "^4.0.0",
     "jest": "^28.1.0",
     "pino-pretty": "^8.0.0"
   }
