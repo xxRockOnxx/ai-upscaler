@@ -1,6 +1,8 @@
 
 # AI Upscaler
 
+[![codecov](https://codecov.io/gh/xxRockOnxx/ai-upscaler/branch/master/graph/badge.svg?token=QTYY6Z1NMQ)](https://codecov.io/gh/xxRockOnxx/ai-upscaler)
+
 A web-based video upscaling service powered by [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) and [FFMPEG](https://github.com/FFmpeg/FFmpeg).
 
 Plans:
@@ -16,15 +18,15 @@ can simply just use the service.
 
 ## Prerequisites
 
-Because this project is by Real-ESRGAN and FFMPEG, these 2 must be installed or downloaded on your local machine.
+Real-ESRGAN and FFMPEG must be installed or downloaded on your local machine.
 
 Docker is used for NodeJS and Redis. You can use it if desired or just run natively on your host.
 
 ### NodeJS
 
-To use NodeJS in Docker, you **must** be able to run Docker with GPU.
+To use NodeJS in Docker, you ***must*** be able to run Docker with GPU.
 
-I haven't been able to use Docker with GPU so I **cannot** help you with this.
+I haven't been able to use Docker with GPU so I ***cannot*** help you with this.
 
 For Nvidia users, this might help: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
 
