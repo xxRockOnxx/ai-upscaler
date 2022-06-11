@@ -13,4 +13,11 @@ module.exports = {
   env: {
     node: true,
   },
+
+  overrides: [{
+    files: '**/*.test.js',
+    rules: {
+      'node/no-unpublished-require': 'off',
+    },
+  }],
 };
