@@ -149,7 +149,7 @@ export default function createQueueMachine ({
           },
           {
             target: 'finished',
-            cond: ({ status }) => status === 'finished'
+            cond: ({ status, progress }) => status === 'finished' && progress.stitch === 100
           }
         ],
 
