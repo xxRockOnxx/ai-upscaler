@@ -15,6 +15,7 @@
           <div class="w-1/2">
             <TrackerProgress
               class="px-6 py-12"
+              :status="status"
               :extract="progress.extract"
               :enhance="progress.enhance"
               :stitch="progress.stitch"

@@ -23,6 +23,7 @@
     />
 
     <button
+      v-show="status === 'processing'"
       class="mt-6 font-bold tracking-wider text-blue-500"
       @click="$emit('cancel')"
     >
@@ -34,6 +35,11 @@
 <script>
 export default {
   props: {
+    status: {
+      type: String,
+      required: true
+    },
+
     extract: {
       type: Number,
       default: 0
