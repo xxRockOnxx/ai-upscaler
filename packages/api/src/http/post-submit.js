@@ -105,7 +105,7 @@ module.exports = function createPostSubmit(queue, upscaler) {
         request.log.error('Failed to add job to queue');
         request.log.error(e);
         reply.code(500).send({ message: 'Something unexpected happened.' });
-      })
-      .then(() => storage.destroy());
+        storage.destroy();
+      });
   };
 };
