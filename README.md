@@ -54,9 +54,9 @@ You can set `FFMPEG_PATH` and `FFPROBE_PATH` environment variables if needed.
 
 Download the correct build of Real-ESRGAN based on your architecture at https://github.com/xinntao/Real-ESRGAN/releases.
 
-By default, the app will attempt to run `./realesrgan/realesrgan-ncnn-vulkan`.
+By default, the app will attempt to run `./packages/api/realesrgan/realesrgan-ncnn-vulkan`.
 
-You can set `REAL_ESRGAN_PATH` in `package.json` if needed.
+You can set `REAL_ESRGAN_PATH` in `./packages/api/package.json` if needed.
 
 ## Run Locally
 
@@ -78,11 +78,14 @@ You can set `REAL_ESRGAN_PATH` in `package.json` if needed.
   yarn install
 ```
 
-- Update environment variables in `package.json` if necessary
+- Update environment variables in `./packages/api/package.json` if necessary
 
 - Start the apps
 
+Backend:
+
 ```bash
+  cd packages/api
   yarn start-http
   yarn start-worker
 ```
@@ -90,8 +93,13 @@ You can set `REAL_ESRGAN_PATH` in `package.json` if needed.
 You can also just use [pm2](https://pm2.keymetrics.io/) for convenience if you are not using Docker.
 
 ```bash
-  pm2 start yarn --name http -- start-http
-  pm2 start yarn --name worker -- start-worker
+  pm2 start npm --name http -- run start-http
+  pm2 start npm --name worker -- run start-worker
 ```
 
-The server will listen on port 3000.
+Frontend:
+
+```bash
+  cd packages/ui
+  yarn dev -o
+```
