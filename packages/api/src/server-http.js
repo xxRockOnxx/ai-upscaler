@@ -77,7 +77,23 @@ async function start() {
   const server = await createServer();
 
   server.get('/queue', getQueue(queue));
-  server.put('/queue', putQueue(queue));
+
+  server.route({
+    method: 'PUT',
+    url: '/queue',
+    handler: putQueue(queue),
+    schema: {
+      body: {
+        type: ['object', 'null'],
+        properties: {
+          forced: {
+            type: 'boolean',
+            default: false,
+          },
+        },
+      },
+    },
+  });
 
   server.route({
     method: 'GET',
