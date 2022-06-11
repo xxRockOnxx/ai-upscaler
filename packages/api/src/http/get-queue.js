@@ -7,15 +7,15 @@ module.exports = function createGetQueue(queue) {
       'failed',
     ];
 
-    Object.keys(queueList).forEach((key) => {
-      const queueItem = queueList[key];
+    let total = 0;
 
-      if (inactiveStatus.includes(queueItem.status)) {
-        delete queueList[key];
+    Object.values(queueList).forEach((item) => {
+      if (inactiveStatus.includes(item.status)) {
+        return;
       }
-    });
 
-    const total = Object.keys(queueList).length;
+      total += 1;
+    });
 
     // No cookie or invalid queue id
     if (!request.cookies.queue || !queueList[request.cookies.queue]) {
@@ -30,7 +30,7 @@ module.exports = function createGetQueue(queue) {
 
     return reply.send({
       total,
-      position: item.position,
+      position: inactiveStatus.includes(item.status) ? null : item.position,
       status: item.status,
     });
   };
