@@ -3,6 +3,8 @@ FROM node:18
 WORKDIR /app
 
 RUN wget https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz && \
-    tar -xvf ffmpeg-git-amd64-static.tar.xz && \
-    mv ffmpeg-git-20220422-amd64-static ffmpeg && \
+    mkdir ffmpeg && \
+    tar -xvf ffmpeg-git-amd64-static.tar.xz -C ffmpeg --strip-components=1 && \
     rm ffmpeg-git-amd64-static.tar.xz
+
+RUN yarn install
