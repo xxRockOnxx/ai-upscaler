@@ -20,6 +20,9 @@ describe('get-frames', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/frames',
+      cookies: {
+        queue: 'test',
+      },
     });
 
     expect(response.statusCode).toBe(200);
