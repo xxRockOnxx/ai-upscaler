@@ -3,6 +3,8 @@ const uuid = require('uuid').v4;
 const Storage = require('../storage');
 const StorageDownloads = require('../storage-downloads');
 const createUpscalerMachine = require('../xstate/upscaler');
+const createCompleteListener = require('./listener-complete');
+const createFailedListener = require('./listener-failed');
 
 function createCancelHandler(interpreter, job) {
   return function cancelHandler(channel, data) {
@@ -18,20 +20,18 @@ function createCancelHandler(interpreter, job) {
   };
 }
 
-/**
- * @param {import("../jobs")} jobLogger
- * @param {import("bull").Queue} queue
- */
-module.exports = function jobs(jobLogger, queue) {
-  // Reuse Bull's redis pubsub for listening
-  // to our custom event `cancel`.
-  queue.eclient.subscribe('cancel', (err) => {
+module.exports = function jobs(queuedB, jobsDB, bullQueue) {
+  bullQueue.on('completed', createCompleteListener(queuedB));
+  bullQueue.on('failed', createFailedListener(queuedB));
+
+  // Reuse Bull's redis pubsub for listening to our custom event `cancel`.
+  bullQueue.eclient.subscribe('cancel', (err) => {
     if (err) {
       throw err;
     }
   });
 
-  queue.process(async (job) => {
+  bullQueue.process(async (job) => {
     const storage = new StorageDownloads(job.data.id);
     const outputFile = storage.path(`${uuid()}.mp4`);
 
@@ -48,19 +48,19 @@ module.exports = function jobs(jobLogger, queue) {
 
     // `job.data.id` represents the owner of the job (could be user id).
     // `job.id` represents the specific job of an owner.
-    await jobLogger.save(job.data.id, {
+    await jobsDB.save(job.data.id, {
       id: job.id,
     });
 
     const cancelHandler = createCancelHandler(interpreter, job);
 
-    queue.eclient.on('message', cancelHandler);
+    bullQueue.eclient.on('message', cancelHandler);
 
     return new Promise((resolve, reject) => {
       interpreter
         .onEvent((event) => {
           if (event.type === 'PROGRESS') {
-            jobLogger.set(
+            jobsDB.set(
               job.data.id,
               'progress',
               interpreter.state.context.progress,
@@ -68,7 +68,7 @@ module.exports = function jobs(jobLogger, queue) {
           }
         })
         .onDone((evt) => {
-          queue.eclient.off('message', cancelHandler);
+          bullQueue.eclient.off('message', cancelHandler);
           if (interpreter.state.value === 'done') {
             resolve({ output: outputFile });
           } else if (evt.data.canceled) {

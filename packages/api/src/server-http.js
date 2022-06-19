@@ -3,7 +3,6 @@ const fastify = require('fastify');
 const fastifyCookie = require('@fastify/cookie');
 const fastifyMultipart = require('@fastify/multipart');
 const crypto = require('crypto-random-string');
-const fs = require('fs-extra');
 const Bull = require('bull');
 const createQueue = require('./queue');
 const createJobLogger = require('./jobs');
@@ -131,31 +130,6 @@ async function start() {
   });
 
   await server.listen(3000, '0.0.0.0');
-
-  upscaleQueue.on('global:completed', (job) => {
-    server.log.info('Marking job as completed');
-
-    upscaleQueue
-      .getJob(job)
-      .then((storedJob) => {
-        fs.remove(storedJob.data.input);
-        return queue.markAsStatus(storedJob.data.id, 'finished');
-      })
-      .then(() => queue.sort());
-  });
-
-  upscaleQueue.on('global:failed', (job, err) => {
-    server.log.error(err);
-    server.log.info('Marking job as failed');
-
-    upscaleQueue
-      .getJob(job)
-      .then((storedJob) => {
-        fs.remove(storedJob.data.input);
-        return queue.markAsStatus(storedJob.data.id, 'failed');
-      })
-      .then(() => queue.sort());
-  });
 }
 
 start();
