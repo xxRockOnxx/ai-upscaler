@@ -1,6 +1,4 @@
 const { createMachine, assign, send } = require('xstate');
-const fs = require('fs-extra');
-const path = require('path');
 const extract = require('../upscaler/extract');
 const enhance = require('../upscaler/enhance');
 const stitch = require('../upscaler/stitch');
@@ -61,156 +59,158 @@ function createService(name, fn, dataFn) {
   };
 }
 
-module.exports = createMachine(
-  {
-    id: 'upscaler',
+/**
+ * @param {string} input - Path to input video file.
+ * @param {string} output - Path to output video file.
+ * @param {object} metadata - Metadata of the input video file.
+ * @param {import('../storage')} storage - Storage to be used for retrieving and storing files.
+ */
+module.exports = function createUpscaleMachine({
+  input,
+  output,
+  metadata,
+  storage,
+}) {
+  return createMachine(
+    {
+      id: 'upscaler',
 
-    initial: 'prepare',
+      initial: 'prepare',
 
-    context: {
-      workDir: null,
-      input: null,
-      metadata: null,
-      progress: {
-        extract: 0,
-        enhance: 0,
-        stitch: 0,
+      context: {
+        input,
+        output,
+        metadata,
+        storage,
+        progress: {
+          extract: 0,
+          enhance: 0,
+          stitch: 0,
+        },
+      },
+
+      on: {
+        PROGRESS: {
+          actions: assign({
+            progress: (ctx, event) => event.progress,
+          }),
+        },
+      },
+
+      states: {
+        prepare: {
+          invoke: {
+            id: 'prepare',
+            src: 'prepare',
+            onDone: {
+              target: 'extract',
+            },
+            onError: {
+              target: 'failed',
+            },
+          },
+        },
+
+        extract: {
+          invoke: {
+            id: 'extract',
+            src: 'extract',
+          },
+
+          on: {
+            DONE: {
+              target: 'enhance',
+            },
+
+            ERROR: {
+              target: 'failed',
+            },
+
+            CANCEL: {
+              actions: send({ type: 'CANCEL' }, { to: 'extract' }),
+            },
+          },
+        },
+
+        enhance: {
+          invoke: {
+            id: 'enhance',
+            src: 'enhance',
+          },
+
+          on: {
+            DONE: {
+              target: 'stitch',
+            },
+
+            ERROR: {
+              target: 'failed',
+            },
+
+            CANCEL: {
+              actions: send({ type: 'CANCEL' }, { to: 'enhance' }),
+            },
+          },
+        },
+
+        stitch: {
+          invoke: {
+            id: 'stitch',
+            src: 'stitch',
+          },
+
+          on: {
+            DONE: {
+              target: 'done',
+            },
+
+            ERROR: {
+              target: 'failed',
+            },
+
+            CANCEL: {
+              actions: send({ type: 'CANCEL' }, { to: 'stitch' }),
+            },
+          },
+        },
+
+        done: {
+          type: 'final',
+        },
+
+        failed: {
+          type: 'final',
+          data: {
+            canceled: (ctx, evt) => evt.canceled,
+          },
+        },
       },
     },
-
-    on: {
-      PROGRESS: {
-        actions: assign({
-          progress: (ctx, event) => event.progress,
-        }),
-      },
-    },
-
-    states: {
-      prepare: {
-        invoke: {
-          id: 'prepare',
-          src: 'prepare',
-          onDone: {
-            target: 'extract',
-          },
-          onError: {
-            target: 'failed',
-          },
-        },
-      },
-
-      extract: {
-        invoke: {
-          id: 'extract',
-          src: 'extract',
+    {
+      services: {
+        prepare(context) {
+          return Promise.all([
+            context.storage.mkFramesDir(),
+            context.storage.mkEnhancedDir(),
+          ]);
         },
 
-        on: {
-          DONE: {
-            target: 'enhance',
-          },
+        extract: createService('extract', extract, (context) => ({
+          input: context.input,
+          output: context.storage.framesPath('frame_%03d.png'),
+        })),
 
-          ERROR: {
-            target: 'failed',
-          },
+        enhance: createService('enhance', enhance, (context) => ({
+          input: context.storage.framesPath(),
+          output: context.storage.enhancedPath(),
+        })),
 
-          CANCEL: {
-            actions: send({ type: 'CANCEL' }, { to: 'extract' }),
-          },
-        },
-      },
-
-      enhance: {
-        invoke: {
-          id: 'enhance',
-          src: 'enhance',
-        },
-
-        on: {
-          DONE: {
-            target: 'stitch',
-          },
-
-          ERROR: {
-            target: 'failed',
-          },
-
-          CANCEL: {
-            actions: send({ type: 'CANCEL' }, { to: 'enhance' }),
-          },
-        },
-      },
-
-      stitch: {
-        invoke: {
-          id: 'stitch',
-          src: 'stitch',
-        },
-
-        on: {
-          DONE: {
-            target: 'done',
-          },
-
-          ERROR: {
-            target: 'failed',
-          },
-
-          CANCEL: {
-            actions: send({ type: 'CANCEL' }, { to: 'stitch' }),
-          },
-        },
-      },
-
-      done: {
-        type: 'final',
-      },
-
-      failed: {
-        type: 'final',
-        data: {
-          canceled: (ctx, evt) => evt.canceled,
-        },
-      },
-    },
-  },
-  {
-    services: {
-      prepare(context) {
-        return Promise.all([
-          fs.emptyDir(path.join(context.workDir, 'frames')),
-          fs.emptyDir(path.join(context.workDir, 'enhanced_frames')),
-        ]);
-      },
-
-      extract: createService('extract', extract, (context) => ({
-        input: context.input,
-        output: path.join(context.workDir, 'frames', 'frame_%03d.png'),
-      })),
-
-      enhance: createService('enhance', enhance, (context) => ({
-        input: path.join(context.workDir, 'frames'),
-        output: path.join(context.workDir, 'enhanced_frames'),
-      })),
-
-      stitch: createService('stitch', stitch, (context) => {
-        const extName = path.extname(context.input);
-        const filename = path.basename(context.input, extName);
-        const enhancedName = `${filename}_enhanced${extName}`;
-
-        return {
-          input: path.join(
-            context.workDir,
-            'enhanced_frames',
-            'frame_%03d.png',
-          ),
-
-          output: path.join(context.workDir, enhancedName),
-
+        stitch: createService('stitch', stitch, (context) => ({
+          input: context.storage.enhancedPath('frame_%03d.png'),
+          output: context.output,
           metadata: context.metadata,
-        };
-      }),
+        })),
+      },
     },
-  },
-);
+  );
+};

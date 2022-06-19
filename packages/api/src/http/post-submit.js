@@ -64,7 +64,7 @@ module.exports = function createPostSubmit(queue, upscaler) {
     let metadata;
 
     try {
-      outfile = await storage.store(data.filename, data.file);
+      outfile = await storage.store(data.file, data.filename);
 
       if (!(await validateMIME(outfile))) {
         reply.code(400).send({ message: 'Expected video/mp4' });
@@ -91,7 +91,6 @@ module.exports = function createPostSubmit(queue, upscaler) {
       .add({
         id,
         metadata,
-        workDir: storage.workDir,
         input: outfile,
       })
       .then(() => {

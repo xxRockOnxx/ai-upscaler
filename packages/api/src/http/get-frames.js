@@ -7,7 +7,7 @@ module.exports = function createGetFrames() {
     const storage = new Storage(id);
 
     try {
-      const frames = storage.path('enhanced_frames');
+      const frames = storage.enhancedPath();
       reply.send(await fs.readdir(frames));
     } catch (e) {
       if (e.code !== 'ENOENT') {
