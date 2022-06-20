@@ -1,8 +1,8 @@
 const { interpret } = require('xstate');
 const uuid = require('uuid').v4;
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 const StorageDownloads = require('../downloads/storage');
-const createUpscalerMachine = require('../xstate/upscaler');
+const createUpscalerMachine = require('./xstate/upscaler');
 const createCompleteListener = require('./listener-complete');
 const createFailedListener = require('./listener-failed');
 

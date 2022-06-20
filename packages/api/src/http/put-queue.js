@@ -1,5 +1,5 @@
 const uuid = require('uuid').v4;
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 
 module.exports = function createPutQueue(queue) {
   return async function putQueue(request, reply) {

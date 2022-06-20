@@ -1,6 +1,6 @@
 const { createClient } = require('redis');
-const createQueue = require('./queue');
-const { QueueError } = require('./queue');
+const createQueue = require('./db');
+const { QueueError } = require('./db');
 
 describe('queue', () => {
   let connection;

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 
 module.exports = function createGetFrame() {
   return function getFrame(request, reply) {

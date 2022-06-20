@@ -1,4 +1,4 @@
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 
 module.exports = function createOnJobFailedHandler(queueDB) {
   return function onJobFailed(job) {

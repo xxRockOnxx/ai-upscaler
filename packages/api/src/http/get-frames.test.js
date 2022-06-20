@@ -2,7 +2,7 @@ const fastify = require('fastify');
 const cookies = require('@fastify/cookie');
 const fs = require('fs-extra');
 const handler = require('./get-frames');
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 
 describe('get-frames', () => {
   /**

@@ -1,7 +1,7 @@
 const { createMachine, assign, send } = require('xstate');
-const extract = require('../upscaler/extract');
-const enhance = require('../upscaler/enhance');
-const stitch = require('../upscaler/stitch');
+const extract = require('../../upscaler/commands/extract');
+const enhance = require('../../upscaler/commands/enhance');
+const stitch = require('../../upscaler/commands/stitch');
 
 /**
  * This is a utility function that creates an XState callback-style service.
@@ -63,7 +63,7 @@ function createService(name, fn, dataFn) {
  * @param {string} input - Path to input video file.
  * @param {string} output - Path to output video file.
  * @param {object} metadata - Metadata of the input video file.
- * @param {import('../storage')} storage - Storage to be used for retrieving and storing files.
+ * @param {import('../../upscaler/storage')} storage - Storage to be used for retrieving and storing files.
  */
 module.exports = function createUpscaleMachine({
   input,

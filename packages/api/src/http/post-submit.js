@@ -1,6 +1,6 @@
 const { Magic, MAGIC_MIME_TYPE } = require('mmmagic');
 const analyze = require('../analyze');
-const Storage = require('../storage');
+const Storage = require('../upscaler/storage');
 
 function validateMIME(filepath) {
   return new Promise((resolve, reject) => {

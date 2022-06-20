@@ -1,9 +1,4 @@
-class QueueError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'QueueError';
-  }
-};
+const { QueueError } = require('./errors');
 
 // Valid status are:
 // idle
