@@ -44,10 +44,13 @@ module.exports = class Storage {
     return this;
   }
 
-  async store(stream, relativePath) {
+  store(stream, relativePath) {
     const outfile = this.path(relativePath);
-    await pipeline(stream, fs.createWriteStream(outfile));
-    return outfile;
+    return pipeline(stream, fs.createWriteStream(outfile));
+  }
+
+  move(src, dest) {
+    return fs.move(this.path(src), this.path(dest));
   }
 
   async mkdir(relativePath) {

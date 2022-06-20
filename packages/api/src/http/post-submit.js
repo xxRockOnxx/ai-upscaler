@@ -1,8 +1,10 @@
 const { Magic, MAGIC_MIME_TYPE } = require('mmmagic');
+const uuid = require('uuid').v4;
+const mimeTypes = require('mime-types');
 const analyze = require('../analyze');
 const Storage = require('../upscaler/storage');
 
-function validateMIME(filepath) {
+function getMIME(filepath) {
   return new Promise((resolve, reject) => {
     const magic = new Magic(MAGIC_MIME_TYPE);
 
@@ -10,10 +12,14 @@ function validateMIME(filepath) {
       if (err) {
         reject(err);
       } else {
-        resolve(result.startsWith('video/'));
+        resolve(result);
       }
     });
   });
+}
+
+function validateMIME(mime) {
+  return mime.startsWith('video/');
 }
 
 function validateMetadata(metadata) {
@@ -64,13 +70,24 @@ module.exports = function createPostSubmit(queue, upscaler) {
     let metadata;
 
     try {
-      outfile = await storage.store(data.file, data.filename);
+      // Store with filename as UUID to prevent collisions.
+      // Users may have different videos with the same name.
+      const filename = uuid();
 
-      if (!(await validateMIME(outfile))) {
+      // Store it without extension for now so we can validate it first.
+      await storage.store(data.file, filename);
+
+      const mime = await getMIME(storage.path(filename));
+
+      if (!validateMIME(mime)) {
         reply.code(400).send({ message: 'Expected video/mp4' });
         return;
       }
 
+      // Add the detected extension to the filename.
+      const extension = mimeTypes.extension(mime);
+      await storage.move(filename, `${filename}.${extension}`);
+      outfile = storage.path(`${filename}.${extension}`);
       metadata = await analyze(outfile);
     } catch (e) {
       await storage.destroy();

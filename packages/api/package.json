@@ -20,6 +20,7 @@
     "fastify": "^3.29.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-extra": "^10.1.0",
+    "mime-types": "^2.1.35",
     "mmmagic": "^0.5.3",
     "progress": "^2.0.3",
     "redis": "^4.1.0",
