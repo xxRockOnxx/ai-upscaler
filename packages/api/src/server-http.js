@@ -6,6 +6,7 @@ const crypto = require('crypto-random-string');
 const Bull = require('bull');
 const createQueue = require('./queue');
 const createJobLogger = require('./jobs');
+const createDownloads = require('./downloads/db');
 const getQueue = require('./http/get-queue');
 const putQueue = require('./http/put-queue');
 const postSubmit = require('./http/post-submit');
@@ -13,6 +14,7 @@ const getProgress = require('./http/get-progress');
 const putCancel = require('./http/put-cancel');
 const getFrames = require('./http/get-frames');
 const getFrame = require('./http/get-frame');
+const getDownload = require('./http/get-download');
 
 /**
  * @returns {Promise<fastify.FastifyInstance>}
@@ -72,6 +74,7 @@ async function start() {
 
   const queue = createQueue(redisDB);
   const jobLogger = createJobLogger(redisDB);
+  const downloads = createDownloads(redisDB);
   const upscaleQueue = new Bull('upscale', redisURL);
   const server = await createServer();
 
@@ -113,6 +116,13 @@ async function start() {
     url: '/frame/:frame',
     preHandler: [createAssertQueue(queue)],
     handler: getFrame(),
+  });
+
+  server.route({
+    method: 'GET',
+    url: '/download',
+    preHandler: [createAssertQueue(queue)],
+    handler: getDownload(downloads),
   });
 
   server.route({
