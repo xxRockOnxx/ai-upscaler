@@ -2,7 +2,7 @@ const fs = require('fs');
 const Storage = require('../storage');
 
 module.exports = function createGetFrame() {
-  return async function getFrame(request, reply) {
+  return function getFrame(request, reply) {
     const id = request.cookies.queue;
     const storage = new Storage(id);
 
@@ -25,5 +25,7 @@ module.exports = function createGetFrame() {
         .type('image/png')
         .send(stream);
     });
+
+    return reply;
   };
 };
