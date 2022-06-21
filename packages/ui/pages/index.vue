@@ -4,15 +4,22 @@
 
     <div class="container py-28">
       <div class="border shadow">
-        <div class="flex">
-          <div class="w-1/2">
+        <div class="md:flex">
+          <div class="md:w-1/2">
             <Uploader
-              class="h-full"
+              v-if="status !== 'processing'"
+              class="h-full p-10 sm:p-16"
               @change="onFileChange"
+            />
+
+            <FrameCompare
+              v-else
+              class="h-full"
+              :frames="frames"
             />
           </div>
 
-          <div class="w-1/2">
+          <div class="md:w-1/2">
             <TrackerProgress
               class="px-6 py-12"
               :status="status"
@@ -25,7 +32,6 @@
         </div>
 
         <TrackerQueue
-          class="p-6 bg-gray-50"
           :status="status"
           :total="total"
           :position="position"
@@ -49,7 +55,8 @@ export default {
       status: 'unknown',
       total: null,
       position: null,
-      progress: {}
+      progress: {},
+      frames: []
     }
   },
 
@@ -61,6 +68,11 @@ export default {
       }),
       refreshQueue: () => this.$axios.$put('/api/queue'),
       getProgress: () => this.$axios.$get('/api/progress'),
+      getFrames: () => this.$axios.$get('/api/frames').then((frames) => {
+        return frames.map((frame) => {
+          return [`/api/frame/${frame}`, `/api/frame/${frame}?enhanced=true`]
+        })
+      }),
       upload: (file) => {
         const formData = new FormData()
         formData.append('file', file)
@@ -75,6 +87,7 @@ export default {
         this.total = state.context.total
         this.position = state.context.position
         this.progress = state.context.progress
+        this.frames = state.context.frames
       })
       .start()
   },

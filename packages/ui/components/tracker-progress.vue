@@ -1,34 +1,40 @@
 <template>
   <div>
-    <div class="text-4xl">
-      Progress
+    <div class="flex items-center justify-between">
+      <div class="text-4xl">
+        Progress
+      </div>
     </div>
 
     <ProgressTask
-      class="mt-6"
+      class="mt-8"
       name="Extracting frames"
       :progress="extract"
     />
 
     <ProgressTask
-      class="mt-6"
+      class="mt-8"
       name="Enhancing frames"
       :progress="enhance"
     />
 
     <ProgressTask
-      class="mt-6"
+      class="mt-8"
       name="Stitching frames"
       :progress="stitch"
     />
 
-    <button
-      v-show="status === 'processing'"
-      class="mt-6 font-bold tracking-wider text-blue-500"
-      @click="$emit('cancel')"
-    >
-      Click here to cancel
-    </button>
+    <div class="mt-6">
+      <ButtonCancel
+        :disabled="status !== 'processing'"
+        @click.native="$emit('cancel')"
+      />
+
+      <ButtonDownload
+        class="ml-2"
+        :disabled="status !== 'finished'"
+      />
+    </div>
   </div>
 </template>
 

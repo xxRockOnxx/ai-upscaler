@@ -1,5 +1,11 @@
 <template>
-  <div class="space-y-2">
+  <div
+    class="p-6 space-y-2"
+    :class="{
+      'bg-gray-50': status !== 'failed',
+      'bg-red-50 text-red-500': ['failed', 'error'].includes(status),
+    }"
+  >
     <div>
       Status: {{ status }}
     </div>

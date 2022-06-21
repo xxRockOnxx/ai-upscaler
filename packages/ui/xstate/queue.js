@@ -7,6 +7,7 @@ export default function createQueueMachine ({
   refreshQueue,
   upload,
   getProgress,
+  getFrames,
   cancel
 }) {
   return createMachine({
@@ -21,12 +22,15 @@ export default function createQueueMachine ({
 
       refreshQueueMachine: null,
       progressMachine: null,
+      framesMachine: null,
 
       progress: {
         extract: 0,
         enhance: 0,
         stitch: 0
-      }
+      },
+
+      frames: []
     },
 
     invoke: {
@@ -196,6 +200,15 @@ export default function createQueueMachine ({
                   type: 'UPDATE_PROGRESS',
                   progress: evt.data
                 }))
+              })),
+
+              framesMachine: () => spawn(createPollMachine({
+                timeout: 2000,
+                callback: getFrames,
+                onDone: sendParent((_, evt) => ({
+                  type: 'UPDATE_FRAMES',
+                  frames: evt.data
+                }))
               }))
             }),
 
@@ -208,6 +221,12 @@ export default function createQueueMachine ({
               UPDATE_PROGRESS: {
                 actions: assign({
                   progress: (_, event) => event.progress
+                })
+              },
+
+              UPDATE_FRAMES: {
+                actions: assign({
+                  frames: (_, event) => event.frames
                 })
               },
 
@@ -229,8 +248,11 @@ export default function createQueueMachine ({
 
       error: {
         on: {
-          RETRY: {
-            target: 'joining'
+          UPLOAD: {
+            target: 'joining',
+            actions: assign({
+              file: (_, event) => event.file
+            })
           }
         }
       },
@@ -243,25 +265,33 @@ export default function createQueueMachine ({
               file: (_, event) => event.file
             })
           }
-        },
+        }
 
-        always: [
-          {
-            target: 'active.waiting',
-            cond: ({ status }) => status === 'waiting'
-          },
-          {
-            target: 'active.ready',
-            cond: ({ status, file }) => status === 'ready' && file === null
-          },
-          {
-            target: 'active.uploading',
-            cond: ({ status, file }) => status === 'ready' && file !== null
-          }
-        ]
+        // always: [
+        //   {
+        //     target: 'active.waiting',
+        //     cond: ({ status }) => status === 'waiting'
+        //   },
+        //   {
+        //     target: 'active.ready',
+        //     cond: ({ status, file }) => status === 'ready' && file === null
+        //   },
+        //   {
+        //     target: 'active.uploading',
+        //     cond: ({ status, file }) => status === 'ready' && file !== null
+        //   }
+        // ]
       },
 
       finished: {
+        on: {
+          UPLOAD: {
+            target: 'joining',
+            actions: assign({
+              file: (_, event) => event.file
+            })
+          }
+        }
       }
     }
   })
