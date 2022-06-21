@@ -13,7 +13,7 @@
         </p>
 
         <div class="flex flex-col mt-4">
-          <div class="text-white md:text-xl lg:text-2xl">
+          <div class="text-white md:text-xl">
             Source code:
 
             <a
@@ -24,7 +24,7 @@
             </a>
           </div>
 
-          <div class="text-white md:text-xl md:mt-2 lg:mt-4 lg:text-2xl">
+          <div class="text-white md:text-xl md:mt-2 lg:mt-4">
             Powered by:
 
             <a
@@ -47,9 +47,3 @@
     </div>
   </div>
 </template>
-
-<script>
-export default {}
-</script>
-
-<style></style>

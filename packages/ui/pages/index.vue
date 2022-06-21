@@ -39,7 +39,13 @@
       </div>
     </div>
 
-    <Faq />
+    <Faq ref="faq" />
+
+    <ScrollDown
+      v-show="showScroll"
+      class="fixed bottom-0 right-0 mb-6 mr-6"
+      :top="scrollTop"
+    />
   </div>
 </template>
 
@@ -58,11 +64,27 @@ export default {
       total: null,
       position: null,
       progress: {},
-      frames: []
+      frames: [],
+
+      showScroll: true,
+      scrollTop: 0
     }
   },
 
   mounted () {
+    this.scrollTop = this.$refs.faq.$el.offsetTop
+
+    const observer = new window.IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        this.showScroll = false
+        observer.disconnect()
+      }
+    }, {
+      threshold: [0.2]
+    })
+
+    observer.observe(this.$refs.faq.$el)
+
     const qm = createQueueMachine({
       getQueue: () => this.$axios.$get('/api/queue'),
       joinQueue: () => this.$axios.$put('/api/queue', {
