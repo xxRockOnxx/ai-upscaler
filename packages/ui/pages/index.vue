@@ -2,10 +2,10 @@
   <div>
     <Hero />
 
-    <div class="container py-28">
+    <div class="container px-4 py-12 xl:py-28">
       <div class="border shadow">
-        <div class="md:flex">
-          <div class="md:w-1/2">
+        <div class="lg:flex">
+          <div class="lg:w-1/2">
             <Uploader
               v-if="status !== 'processing'"
               class="h-full p-10 sm:p-16"
@@ -19,7 +19,7 @@
             />
           </div>
 
-          <div class="md:w-1/2">
+          <div class="lg:w-1/2">
             <TrackerProgress
               class="px-6 py-12"
               :status="status"
@@ -38,6 +38,8 @@
         />
       </div>
     </div>
+
+    <Faq />
   </div>
 </template>
 
