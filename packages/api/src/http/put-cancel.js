@@ -3,8 +3,9 @@ module.exports = function createPutCancel(redis, queue, jobs) {
     const queueList = await queue.getAll();
 
     if (queueList[request.cookies.queue].status !== 'processing') {
-      reply.status(204).send();
-      return;
+      return reply
+        .status(204)
+        .send();
     }
 
     const job = await jobs.getById(request.cookies.queue);
@@ -13,6 +14,8 @@ module.exports = function createPutCancel(redis, queue, jobs) {
       redis.publish('cancel', job.id);
     }
 
-    reply.status(204).send();
+    return reply
+      .status(204)
+      .send();
   };
 };

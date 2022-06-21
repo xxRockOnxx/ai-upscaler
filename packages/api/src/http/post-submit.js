@@ -39,15 +39,17 @@ function validateMetadata(metadata) {
 module.exports = function createPostSubmit(queue, upscaler) {
   return async function postSubmit(request, reply) {
     if (!request.isMultipart()) {
-      reply.code(415).send({ message: 'Expected multipart/form-data' });
-      return;
+      return reply
+        .code(415)
+        .send({ message: 'Expected multipart/form-data' });
     }
 
     const data = await request.file();
 
     if (!data || data.fieldname !== 'file') {
-      reply.code(400).send({ message: 'Expected `file` field' });
-      return;
+      return reply
+        .code(400)
+        .send({ message: 'Expected `file` field' });
     }
 
     const id = request.cookies.queue;
@@ -55,13 +57,15 @@ module.exports = function createPostSubmit(queue, upscaler) {
     const queueItem = queueList[id];
 
     if (queueItem.position !== 1) {
-      reply.code(400).send({ message: 'Waiting turn' });
-      return;
+      return reply
+        .code(400)
+        .send({ message: 'Waiting turn' });
     }
 
     if (queueItem.status === 'processing') {
-      reply.code(400).send({ message: 'Already processing' });
-      return;
+      return reply
+        .code(400)
+        .send({ message: 'Already processing' });
     }
 
     const storage = await new Storage(id).initialize();
@@ -80,8 +84,9 @@ module.exports = function createPostSubmit(queue, upscaler) {
       const mime = await getMIME(storage.path(filename));
 
       if (!validateMIME(mime)) {
-        reply.code(400).send({ message: 'Expected video/mp4' });
-        return;
+        return reply
+          .code(400)
+          .send({ message: 'Expected video/mp4' });
       }
 
       // Add the detected extension to the filename.
@@ -97,14 +102,15 @@ module.exports = function createPostSubmit(queue, upscaler) {
     const errors = validateMetadata(metadata);
 
     if (errors.length > 0) {
-      reply.code(400).send({
-        message: 'Video limit exceeded',
-        errors,
-      });
-      return;
+      return reply
+        .code(400)
+        .send({
+          message: 'Video limit exceeded',
+          errors,
+        });
     }
 
-    await upscaler
+    return upscaler
       .add({
         id,
         metadata,
@@ -113,15 +119,17 @@ module.exports = function createPostSubmit(queue, upscaler) {
       .then(() => {
         queue.markAsStatus(id, 'processing');
 
-        reply.send({
+        return reply.send({
           status: 'processing',
         });
       })
       .catch((e) => {
         request.log.error('Failed to add job to queue');
         request.log.error(e);
-        reply.code(500).send({ message: 'Something unexpected happened.' });
         storage.destroy();
+        return reply
+          .code(500)
+          .send({ message: 'Something unexpected happened.' });
       });
   };
 };

@@ -16,5 +16,7 @@ module.exports = function createGetFrames() {
 
       reply.send([]);
     }
+
+    return reply;
   };
 };

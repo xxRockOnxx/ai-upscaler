@@ -21,17 +21,17 @@ module.exports = function createPutQueue(queue) {
         }
       });
 
-    reply
-      .cookie('queue', id, {
-        httpOnly: true,
-      })
-      .status(204);
-
     setTimeout(async () => {
       if (await queue.removeIfExpired(id)) {
         queue.sort();
         new Storage(id).destroy();
       }
     }, 1000 * 60);
+
+    return reply
+      .cookie('queue', id, {
+        httpOnly: true,
+      })
+      .status(204);
   };
 };
