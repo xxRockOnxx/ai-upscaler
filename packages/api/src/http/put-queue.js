@@ -32,6 +32,7 @@ module.exports = function createPutQueue(queue) {
       .cookie('queue', id, {
         httpOnly: true,
       })
-      .status(204);
+      .status(204)
+      .send();
   };
 };
