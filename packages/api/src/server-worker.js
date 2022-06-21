@@ -15,5 +15,5 @@ const upscaleQueue = new Bull('upscale', redisURL);
 
 redisDB.connect();
 
-jobsWorker(queueDB, jobsDB, upscaleQueue);
+jobsWorker(queueDB, jobsDB, downloadsDB, upscaleQueue);
 downloadsWorker(downloadsDB, upscaleQueue);

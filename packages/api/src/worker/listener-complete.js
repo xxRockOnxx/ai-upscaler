@@ -1,6 +1,6 @@
 const Storage = require('../upscaler/storage');
 
-module.exports = function createOnJobCompleteListener(queueDB) {
+module.exports = function createOnJobCompleteListener(queueDB, downloadsDB) {
   return function onJobComplete(job) {
     // Clean up working directory.
     // Downloadable files are moved somewhere else.
@@ -9,5 +9,10 @@ module.exports = function createOnJobCompleteListener(queueDB) {
     queueDB
       .markAsStatus(job.data.id, 'finished')
       .then(() => queueDB.sort());
+
+    downloadsDB.save(job.data.id, {
+      file: job.returnvalue.output,
+      expire_at: Date.now() + (1000 * 60 * 60 * 24),
+    });
   };
 };

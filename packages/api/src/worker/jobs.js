@@ -20,8 +20,8 @@ function createCancelHandler(interpreter, job) {
   };
 }
 
-module.exports = function jobs(queuedB, jobsDB, bullQueue) {
-  bullQueue.on('completed', createCompleteListener(queuedB));
+module.exports = function jobs(queuedB, jobsDB, downloadsDB, bullQueue) {
+  bullQueue.on('completed', createCompleteListener(queuedB, downloadsDB));
   bullQueue.on('failed', createFailedListener(queuedB));
 
   // Reuse Bull's redis pubsub for listening to our custom event `cancel`.
