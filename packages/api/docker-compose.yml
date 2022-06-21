@@ -6,7 +6,6 @@ services:
     container_name: node
     depends_on:
       - redis
-      - worker
     ports:
       - "3000:3000"
     working_dir: /app
