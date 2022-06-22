@@ -1,14 +1,25 @@
 export default {
+  mode: 'spa',
+
+  server: {
+    host: '0.0.0.0',
+    port: 3001
+  },
+
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    title: 'ui',
+    title: 'AI Upscaler',
     htmlAttrs: {
       lang: 'en'
     },
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { hid: 'description', name: 'description', content: '' },
+      {
+        hid: 'description',
+        name: 'description',
+        content: 'Enhance low resolution videos to 4x of the original size with the power of AI for free.'
+      },
       { name: 'format-detection', content: 'telephone=no' }
     ],
     link: [
