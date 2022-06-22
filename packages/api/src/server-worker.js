@@ -6,6 +6,18 @@ const createDownloadsDB = require('./downloads/db');
 const jobsWorker = require('./worker/jobs');
 const downloadsWorker = require('./worker/downloads');
 
+if (!process.env.REDIS_HOST) {
+  throw new Error('missing `REDIS_HOST` env variable');
+}
+
+if (!process.env.REDIS_PORT) {
+  throw new Error('missing `REDIS_PORT` env variable');
+}
+
+if (!process.env.REAL_ESRGAN_PATH) {
+  throw new Error('missing `REAL_ESRGAN_PATH` env variable');
+}
+
 const redisURL = `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
 const redisDB = createClient({ url: redisURL });
 const queueDB = createQueueDB(redisDB);

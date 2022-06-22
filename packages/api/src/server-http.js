@@ -16,6 +16,14 @@ const getFrames = require('./http/get-frames');
 const getFrame = require('./http/get-frame');
 const getDownload = require('./http/get-download');
 
+if (!process.env.REDIS_HOST) {
+  throw new Error('missing `REDIS_HOST` env variable');
+}
+
+if (!process.env.REDIS_PORT) {
+  throw new Error('missing `REDIS_PORT` env variable');
+}
+
 /**
  * @returns {Promise<fastify.FastifyInstance>}
  */

@@ -78,7 +78,7 @@ You can set `REAL_ESRGAN_PATH` in `./packages/api/package.json` if needed.
   yarn install
 ```
 
-- Update environment variables in `./packages/api/package.json` if necessary
+- Copy/Rename `./packages/api/.env.example` to `./packages/api/.env`
 
 - Start the apps
 

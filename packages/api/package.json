@@ -7,8 +7,8 @@
     "node": ">=16"
   },
   "scripts": {
-    "start-http": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 node src/server-http.js",
-    "start-worker": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REAL_ESRGAN_PATH=./realesrgan/realesrgan-ncnn-vulkan node src/server-worker.js",
+    "start-http": "node -r dotenv/config src/server-http.js",
+    "start-worker": "node -r dotenv/config src/server-worker.js",
     "lint": "eslint --ignore-path .gitignore src",
     "test": "REDIS_HOST=127.0.0.1 REDIS_PORT=6379 jest --runInBand --coverage"
   },
@@ -17,6 +17,7 @@
     "@fastify/multipart": "^6.0.0",
     "bull": "^4.8.3",
     "crypto-random-string": "3",
+    "dotenv": "^16.0.1",
     "fastify": "^3.29.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs-extra": "^10.1.0",
