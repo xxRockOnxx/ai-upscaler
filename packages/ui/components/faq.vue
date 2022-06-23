@@ -76,6 +76,10 @@
           Help me buy/maintain a good server by donating to my Ko-fi page.
         </p>
 
+        <p class="mt-4 md:text-lg lg:text-xl">
+          Even a small amount of $3 will help.
+        </p>
+
         <a
           class="inline-block mt-4"
           href="https://ko-fi.com/Y8Y7D48SS"
