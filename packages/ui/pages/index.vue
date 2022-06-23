@@ -71,6 +71,16 @@ export default {
     }
   },
 
+  head: {
+    link: [
+      {
+        rel: 'preload',
+        href: 'https://raw.githubusercontent.com/xinntao/public-figures/master/Real-ESRGAN/cmp_realesrgan_anime_1.png',
+        as: 'image'
+      }
+    ]
+  },
+
   mounted () {
     this.scrollTop = this.$refs.faq.$el.offsetTop
 

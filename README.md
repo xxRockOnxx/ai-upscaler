@@ -101,5 +101,6 @@ Frontend:
 
 ```bash
   cd packages/ui
-  yarn dev -o
+  yarn generate
+  yarn start
 ```

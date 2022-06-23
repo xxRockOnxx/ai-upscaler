@@ -1,5 +1,9 @@
 export default {
-  mode: 'spa',
+  target: 'static',
+
+  ssr: false,
+
+  modern: true,
 
   server: {
     host: '0.0.0.0',
@@ -8,7 +12,7 @@ export default {
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    title: 'AI Upscaler',
+    title: 'Free Online AI Video Upscaler',
     htmlAttrs: {
       lang: 'en'
     },

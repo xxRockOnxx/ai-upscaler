@@ -2,6 +2,7 @@
   <button
     type="button"
     class="p-3 text-white bg-[#085FC0] border-2 rounded-full shadow-2xl bounce"
+    aria-label="Scroll down"
     @click="scrollDown"
   >
     <svg
