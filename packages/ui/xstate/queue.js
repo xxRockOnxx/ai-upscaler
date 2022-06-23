@@ -89,6 +89,10 @@ export default function createQueueMachine ({
           {
             target: 'finished',
             cond: ({ status }) => status === 'finished'
+          },
+          {
+            target: 'unavailable',
+            cond: ({ status }) => status === 'unavailable'
           }
         ]
       },
@@ -292,6 +296,10 @@ export default function createQueueMachine ({
             })
           }
         }
+      },
+
+      unavailable: {
+        type: 'final'
       }
     }
   })

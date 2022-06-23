@@ -3,12 +3,21 @@
     <Hero />
 
     <div class="container px-4 py-12 xl:py-28">
+      <UnavailableCard
+        v-if="status === 'unavailable'"
+        class="mb-4"
+      />
+
       <div class="border shadow">
         <div class="lg:flex">
           <div class="lg:w-1/2">
             <Uploader
               v-if="status !== 'processing'"
               class="h-full p-10 sm:p-16"
+              :class="{
+                'opacity-50': status === 'unavailable'
+              }"
+              :disabled="status === 'unavailable'"
               @change="onFileChange"
             />
 
@@ -84,19 +93,20 @@ export default {
   mounted () {
     this.scrollTop = this.$refs.faq.$el.offsetTop
 
-    const observer = new window.IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        this.showScroll = false
-        observer.disconnect()
-      }
-    }, {
-      threshold: [0.2]
-    })
-
-    observer.observe(this.$refs.faq.$el)
+    this.startObserver()
 
     const qm = createQueueMachine({
-      getQueue: () => this.$axios.$get('/api/queue'),
+      getQueue: () => this.$axios.$get('/api/queue').catch((err) => {
+        if (err && err.response && err.response.status === 503) {
+          return {
+            status: 'unavailable',
+            position: null,
+            total: 0
+          }
+        }
+
+        throw err
+      }),
       joinQueue: () => this.$axios.$put('/api/queue', {
         forced: true
       }),
@@ -127,6 +137,19 @@ export default {
   },
 
   methods: {
+    startObserver () {
+      const observer = new window.IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          this.showScroll = false
+          observer.disconnect()
+        }
+      }, {
+        threshold: [0.2]
+      })
+
+      observer.observe(this.$refs.faq.$el)
+    },
+
     onFileChange (file) {
       this.qm.send({
         type: 'UPLOAD',

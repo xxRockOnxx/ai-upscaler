@@ -6,6 +6,7 @@
     <button
       class="w-full h-full"
       type="button"
+      :disabled="disabled"
       @click="onClick"
     >
       <svg
@@ -57,6 +58,7 @@
       type="file"
       accept="video/*"
       hidden
+      :disabled="disabled"
       @change="onFileChange"
     >
   </div>
@@ -64,6 +66,13 @@
 
 <script>
 export default {
+  props: {
+    disabled: {
+      type: Boolean,
+      default: false
+    }
+  },
+
   methods: {
     onClick () {
       this.$refs.input.click()
@@ -80,6 +89,10 @@ export default {
 
     onDrop (evt) {
       evt.preventDefault()
+
+      if (this.disabled) {
+        return
+      }
 
       if (evt.dataTransfer.files.length === 0) {
         return
