@@ -3,7 +3,9 @@ import { createMachine } from 'xstate'
 export default function createPollMachine ({
   callback,
   timeout,
-  onDone
+  onDone,
+  // eslint-disable-next-line no-console
+  onError = console.error
 }) {
   return createMachine({
     id: 'poll',
@@ -17,6 +19,10 @@ export default function createPollMachine ({
           onDone: {
             target: 'waiting',
             actions: onDone
+          },
+          onError: {
+            target: 'waiting',
+            actions: onError
           }
         }
       },

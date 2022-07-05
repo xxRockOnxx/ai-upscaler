@@ -1,5 +1,5 @@
 {
-  "name": "ui",
+  "name": "@ai-upscaler/ui",
   "version": "1.0.0",
   "scripts": {
     "dev": "nuxt",

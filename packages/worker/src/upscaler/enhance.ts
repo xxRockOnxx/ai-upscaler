@@ -1,0 +1,84 @@
+import * as path from 'path';
+import { promises as fs } from 'fs';
+import { exec } from 'child_process';
+import { Task } from './task';
+
+export interface EnhanceData {
+  input: string
+  output: string
+}
+
+function enhanceFrame({
+  input,
+  output,
+  onDone,
+  onError,
+}) {
+  const args = [
+    '-i',
+    input,
+
+    '-o',
+    output,
+
+    '-s',
+    '4',
+
+    '-f',
+    'png',
+
+    // @TODO: make this a variable
+    '-n',
+    'realesrgan-x4plus',
+  ];
+
+  const command = `${process.env.REAL_ESRGAN_PATH} ${args.join(' ')}`;
+
+  const proc = exec(command, (code, out, err) => {
+    if (code) {
+      onError(new Error(err));
+    } else {
+      onDone();
+    }
+  });
+
+  return () => proc.kill();
+}
+
+export const enhanceFrames: Task<EnhanceData, void> = function enhanceFrames({
+  data,
+  onProgress,
+  onDone,
+  onError,
+}) {
+  let cancelFn: () => void;
+
+  fs
+    .readdir(data.input)
+    .then(async (frames) => {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const [i, frame] of frames.entries()) {
+        // Parallelization won't help here.
+        // Enhancing is bound by the GPU's performance.
+        // eslint-disable-next-line no-await-in-loop, no-loop-func
+        await new Promise((resolve, reject) => {
+          cancelFn = enhanceFrame({
+            input: path.join(data.input, frame),
+            output: path.join(data.output, frame),
+            onDone: resolve,
+            onError: reject,
+          });
+        });
+
+        onProgress(((i + 1) / frames.length) * 100);
+      }
+    })
+    .then(onDone)
+    .catch(onError);
+
+  return () => {
+    if (cancelFn) {
+      cancelFn();
+    }
+  };
+};

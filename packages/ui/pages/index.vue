@@ -95,48 +95,22 @@ export default {
 
     this.startObserver()
 
-    const qm = createQueueMachine({
-      getQueue: () => this.$axios.$get('/api/queue').catch((err) => {
-        if (err && err.response && err.response.status === 503) {
-          return {
-            status: 'unavailable',
-            position: null,
-            total: 0
-          }
+    this.$axios
+      .$get('/api/availability')
+      .then(({ available }) => {
+        if (available) {
+          this.startQueue()
+        } else {
+          this.status = 'unavailable'
+          this.total = 0
         }
-
-        throw err
-      }),
-      joinQueue: () => this.$axios.$put('/api/queue', {
-        forced: true
-      }),
-      refreshQueue: () => this.$axios.$put('/api/queue'),
-      getProgress: () => this.$axios.$get('/api/progress'),
-      getFrames: () => this.$axios.$get('/api/frames').then((frames) => {
-        return frames.map((frame) => {
-          return [`/api/frame/${frame}`, `/api/frame/${frame}?enhanced=true`]
-        })
-      }),
-      upload: (file) => {
-        const formData = new FormData()
-        formData.append('file', file)
-        return this.$axios.post('/api/submit', formData)
-      },
-      cancel: () => this.$axios.$put('/api/cancel')
-    })
-
-    this.qm = interpret(qm)
-      .onTransition((state) => {
-        this.status = typeof state.value === 'string' ? state.value : state.value.active
-        this.total = state.context.total
-        this.position = state.context.position
-        this.progress = state.context.progress
-        this.frames = state.context.frames
       })
-      .start()
   },
 
   methods: {
+    /**
+     * Hides the scroll down button when the user scrolls down to the FAQ.
+     */
     startObserver () {
       const observer = new window.IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
@@ -148,6 +122,38 @@ export default {
       })
 
       observer.observe(this.$refs.faq.$el)
+    },
+
+    startQueue () {
+      const qm = createQueueMachine({
+        getQueue: () => this.$axios.$get('/api/queue'),
+        joinQueue: () => this.$axios.$put('/api/queue', {
+          forced: true
+        }),
+        refreshQueue: () => this.$axios.$put('/api/queue'),
+        getProgress: () => this.$axios.$get('/api/progress'),
+        getFrames: () => this.$axios.$get('/api/frames').then((frames) => {
+          return frames.map((frame) => {
+            return [`/api/frame/${frame}`, `/api/frame/${frame}?enhanced=true`]
+          })
+        }),
+        upload: (file) => {
+          const formData = new FormData()
+          formData.append('file', file)
+          return this.$axios.post('/api/submit', formData)
+        },
+        cancel: () => this.$axios.$put('/api/cancel')
+      })
+
+      this.qm = interpret(qm)
+        .onTransition((state) => {
+          this.status = typeof state.value === 'string' ? state.value : state.value.active
+          this.total = state.context.total
+          this.position = state.context.position
+          this.progress = state.context.progress
+          this.frames = state.context.frames
+        })
+        .start()
     },
 
     onFileChange (file) {

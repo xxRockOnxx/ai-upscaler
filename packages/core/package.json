@@ -1,0 +1,26 @@
+{
+  "name": "@ai-upscaler/core",
+  "version": "1.0.0",
+  "repository": "xxRockOnxx/ai-upscaler",
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "DOTENV_CONFIG_PATH=.env.test npx jest --setupFiles dotenv/config"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^9.0.13",
+    "@types/minio": "^7.0.13",
+    "@types/node": "^18.0.0",
+    "dotenv": "^16.0.1",
+    "ioredis": "^5.1.0"
+  },
+  "peerDependencies": {
+    "fs-extra": "^10.1.0",
+    "ioredis": "^5.1.0",
+    "minio": "^7.0.28"
+  }
+}

@@ -166,11 +166,11 @@ export default function createQueueMachine ({
             always: [
               {
                 target: 'ready',
-                cond: ({ status, hasFile }) => status === 'ready' && !hasFile
+                cond: ({ status, file }) => status === 'ready' && !file
               },
               {
                 target: 'uploading',
-                cond: ({ status, hasFile }) => status === 'ready' && hasFile
+                cond: ({ status, file }) => status === 'ready' && file
               }
             ]
           },
@@ -204,27 +204,41 @@ export default function createQueueMachine ({
                   type: 'UPDATE_PROGRESS',
                   progress: evt.data
                 }))
-              })),
-
-              framesMachine: () => spawn(createPollMachine({
-                timeout: 2000,
-                callback: getFrames,
-                onDone: sendParent((_, evt) => ({
-                  type: 'UPDATE_FRAMES',
-                  frames: evt.data
-                }))
               }))
             }),
 
             exit: (ctx) => {
               ctx.progressMachine.stop()
               ctx.progressMachine = null
+
+              if (ctx.framesMachine !== null) {
+                ctx.framesMachine.stop()
+                ctx.framesMachine = null
+              }
             },
 
             on: {
               UPDATE_PROGRESS: {
                 actions: assign({
-                  progress: (_, event) => event.progress
+                  progress: (_, event) => event.progress,
+                  framesMachine: (ctx, event) => {
+                    if (ctx.framesMachine !== null) {
+                      return ctx.framesMachine
+                    }
+
+                    if (event.progress.extract > 0) {
+                      return spawn(createPollMachine({
+                        timeout: 2000,
+                        callback: getFrames,
+                        onDone: sendParent((_, evt) => ({
+                          type: 'UPDATE_FRAMES',
+                          frames: evt.data
+                        }))
+                      }))
+                    }
+
+                    return null
+                  }
                 })
               },
 
@@ -270,21 +284,6 @@ export default function createQueueMachine ({
             })
           }
         }
-
-        // always: [
-        //   {
-        //     target: 'active.waiting',
-        //     cond: ({ status }) => status === 'waiting'
-        //   },
-        //   {
-        //     target: 'active.ready',
-        //     cond: ({ status, file }) => status === 'ready' && file === null
-        //   },
-        //   {
-        //     target: 'active.uploading',
-        //     cond: ({ status, file }) => status === 'ready' && file !== null
-        //   }
-        // ]
       },
 
       finished: {

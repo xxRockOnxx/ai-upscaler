@@ -1,0 +1,74 @@
+version: '3'
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio
+    command: server --console-address ":9001" /data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=user
+      - MINIO_ROOT_PASSWORD=password
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+
+    container_name: api
+
+    depends_on:
+      - redis
+      - minio
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=user
+      - MINIO_SECRET_KEY=password
+      - APP_SECRET=7d0d390066a20491ce2c259dc855ed8c
+
+    volumes:
+      - ./packages/api/src:/app/packages/api/src
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+
+    container_name: worker
+
+    depends_on:
+      - redis
+      - minio
+
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=user
+      - MINIO_SECRET_KEY=password
+
+    volumes:
+      - ./packages/worker/src:/app/packages/worker/src
+
+    deploy:
+      resources:
+        reservations:
+           devices:
+             - driver: nvidia
+               capabilities: [gpu]

@@ -10,97 +10,92 @@ Plans:
 - [ ] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
 - [ ] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor
 - [ ] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
-
-I plan on hosting a forever free web-based upscaling service (both image and video)
-so people who don't know how to setup AI-stuff and/or doesn't have the GPU power
-can simply just use the service.
-
+- [ ] Add an option to use different REAL-ESRGAN models
 
 ## Prerequisites
 
 Real-ESRGAN and FFMPEG must be installed or downloaded on your local machine.
 
-Docker is used for NodeJS and Redis. You can use it if desired or just run natively on your host.
+Docker is used for NodeJS, Redis, and Minio. You can use Docker if desired or just run natively on your host.
 
-### NodeJS
+Only the "Worker" at the moment is not working correctly with Docker and so it must be run natively.
 
-To use NodeJS in Docker, you ***must*** be able to run Docker with GPU.
+If you figure out how to use Nvidia + Vulkan with Docker then please let me know.
 
-I haven't been able to use Docker with GPU so I ***cannot*** help you with this.
+### Environment Variables
 
-For Nvidia users, this might help: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+If running the applications (API and Worker) natively, you can rename the `.env.example` inside the packages to `.env`
+and update the variables as necessary. This will automatically be read when started via `yarn start`.
 
-This means I personally run NodeJS directly on the host.
-
-### Redis
-
-Redis can either be native to your host or via Docker.
-
-By default, the app will attempt to connect to redis at `redis://127.0.0.1:6379`.
-
-You can set `REDIS_HOST` and `REDIS_PORT` in `package.json` if needed.
+Otherwise if the applications are used with Docker, then the required variables are found in `.env.example`.
+The available `docker-compose.yml` is also already pre-filled with the required variables.
 
 ### FFMPEG
 
 Install FFMPEG through your package manager or by downloading static builds at https://johnvansickle.com/ffmpeg.
 
-If you decided to just download a static build, putting it in the project directory will be convenient.
-
 By default, the app will look for the `ffmpeg` and `ffprobe` in your path.
 
-You can set `FFMPEG_PATH` and `FFPROBE_PATH` environment variables if needed.
+Set the absolute path in `FFMPEG_PATH` and `FFPROBE_PATH` environment variables if needed.
 
 ### Real-ESRGAN
 
 Download the correct build of Real-ESRGAN based on your architecture at https://github.com/xinntao/Real-ESRGAN/releases.
 
-By default, the app will attempt to run `./packages/api/realesrgan/realesrgan-ncnn-vulkan`.
-
-You can set `REAL_ESRGAN_PATH` in `./packages/api/package.json` if needed.
+Set the absolute path of the binary to `REAL_ESRGAN_PATH` environment variable.
 
 ## Run Locally
 
-- Clone the project
+Clone the project
 
 ```bash
   git clone https://github.com/xxRockOnxx/ai-upscaler
 ```
 
-- Go to the project directory
+Go to the project directory
 
 ```bash
   cd ai-upscaler
 ```
 
-- Install dependencies
+Install dependencies
 
 ```bash
   yarn install
+  npx lerna bootstrap
 ```
 
-- Copy/Rename `./packages/api/.env.example` to `./packages/api/.env`
+Set the required environment variables or simply just rename `.env.example` inside the packages to `.env`. See [Environment Variables](#environment-variables).
 
-- Start the apps
+Start the apps:
 
-Backend:
+API:
 
 ```bash
   cd packages/api
-  yarn start-http
-  yarn start-worker
+  yarn start
 ```
 
-You can also just use [pm2](https://pm2.keymetrics.io/) for convenience if you are not using Docker.
+Worker:
 
 ```bash
-  pm2 start npm --name http -- run start-http
-  pm2 start npm --name worker -- run start-worker
+  cd packages/worker
+  yarn start
 ```
 
-Frontend:
+UI:
 
 ```bash
   cd packages/ui
   yarn generate
   yarn start
+```
+
+You can also use [pm2](https://pm2.keymetrics.io/) for convenience if you are not using Docker.
+
+Example:
+
+```bash
+  cd packages/api
+  pm2 start npm --name http -- run start
 ```

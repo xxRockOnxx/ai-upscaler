@@ -1,0 +1,13 @@
+{
+  // this root tsconfig just exists to compose sub-projects
+  "files": [],
+
+  "references": [
+    {
+      "path": "./packages/api"
+    },
+    {
+      "path": "./packages/worker"
+    }
+  ]
+}
