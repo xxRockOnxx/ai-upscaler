@@ -87,8 +87,8 @@ async function start() {
       await new Promise((resolve, reject) => {
         const task = upscale({
           id: job.data.id,
-          input: path.join(workDir, filename),
-          output: path.join(workDir, filenameEnhanced),
+          input: localStorage.path(filename),
+          output: localStorage.path(filenameEnhanced),
         });
 
         task
