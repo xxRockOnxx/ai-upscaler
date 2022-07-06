@@ -167,7 +167,9 @@ async function initializePubSub({
       case 'getFrame': {
         publisher.publish('getFrame:response', JSON.stringify({
           id: data.id,
-          frame: await getFrame({
+          frame: data.frame,
+          enhanced: data.enhanced,
+          data: await getFrame({
             id: data.id,
             frame: data.frame,
             enhanced: data.enhanced,

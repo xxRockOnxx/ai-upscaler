@@ -24,11 +24,12 @@ export default function createGetFrame({
   return async function getFrame(request, reply) {
     const id = request.cookies.queue;
     const enhanced = request.query.enhanced === 'true';
+    const { frame } = request.params;
 
     publish.publish('getFrame', JSON.stringify({
       id,
       enhanced,
-      frame: request.params.frame,
+      frame,
     }));
 
     subscribe.on('message', function listener(channel, message) {
@@ -42,10 +43,13 @@ export default function createGetFrame({
         subscribe.off('message', listener);
       }, timeout);
 
-      if (channel === 'getFrame:response' && data.id === id) {
+      if (channel === 'getFrame:response'
+          && data.id === id
+          && data.frame === frame
+          && data.enhanced === enhanced) {
         reply
           .type('image/png')
-          .send(Buffer.from(data.frame));
+          .send(Buffer.from(data.data));
 
         subscribe.off('message', listener);
         clearTimeout(timeoutId);
