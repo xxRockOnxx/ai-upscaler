@@ -6,11 +6,13 @@ import * as os from 'os';
 import * as minio from 'minio';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
-import createLocalStorage from '@ai-upscaler/core/src/storage/local';
+import { Storage } from '@ai-upscaler/core/src/storage/storage';
+import createLocalStorage, { LocalStorage } from '@ai-upscaler/core/src/storage/local';
 import createMinioStorage from '@ai-upscaler/core/src/storage/minio';
+import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import upscaler from './upscaler/upscaler';
 import createGetFrames from './channels/get-frames';
-import createGetFrame from './channels/get-frame';
+import createGetFrame, { GetFrameRequest } from './channels/get-frame';
 import createCancel from './channels/cancel';
 
 const requiredEnvVariables = [
@@ -32,35 +34,27 @@ for (const variable of requiredEnvVariables) {
   }
 }
 
-async function start() {
-  const redisDB = new Redis({
-    host: process.env.REDIS_HOST,
-    port: Number(process.env.REDIS_PORT),
-    maxRetriesPerRequest: null,
-  });
+interface WorkerOptions {
+  workDir: string
+  events: EventEmitter
 
-  const redisSub = new Redis({
-    host: process.env.REDIS_HOST,
-    port: Number(process.env.REDIS_PORT),
-    maxRetriesPerRequest: null,
-  });
+  localStorage: LocalStorage
+  uploadStorage: Storage
+  downloadStorage: Storage
 
-  const minioClient = new minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT,
-    port: Number(process.env.MINIO_PORT),
-    accessKey: process.env.MINIO_ACCESS_KEY,
-    secretKey: process.env.MINIO_SECRET_KEY,
-    useSSL: process.env.MINIO_USE_SSL === 'true',
-  });
+  redis: Redis
+  queueStore: QueueStore
+}
 
-  const queueStore = createQueueStore(redisDB);
-  const workDir = path.join(os.tmpdir(), 'ai-upscaler');
-  const localStorage = await createLocalStorage(workDir);
-  const uploadStorage = createMinioStorage(minioClient, 'uploads');
-  const downloadStorage = createMinioStorage(minioClient, 'downloads');
-
-  const events = new EventEmitter();
-
+function initializeWorker({
+  workDir,
+  events,
+  localStorage,
+  uploadStorage,
+  downloadStorage,
+  redis,
+  queueStore,
+}: WorkerOptions) {
   const upscale = upscaler({
     workDir,
     events,
@@ -105,7 +99,7 @@ async function start() {
     },
 
     {
-      connection: redisDB,
+      connection: redis,
     },
   );
 
@@ -135,21 +129,34 @@ async function start() {
     // No need to keep the raw video.
     uploadStorage.delete(job.data.input);
   });
+}
 
-  await redisSub.subscribe('getFrames', 'getFrame', 'cancel');
+interface PubSubOptions {
+  publisher: Redis
+  subscriber: Redis
 
-  const getFrames = createGetFrames(localStorage);
-  const getFrame = createGetFrame(localStorage);
-  const cancel = createCancel(events);
+  getFrames: (id: string) => Promise<string[]>
+  getFrame: (payload: GetFrameRequest) => Promise<ReturnType<Buffer['toJSON']>>
+  cancel: (id: string) => void
+}
 
-  redisSub.on('message', async (channel, message) => {
+async function initializePubSub({
+  publisher,
+  subscriber,
+  getFrames,
+  getFrame,
+  cancel,
+}: PubSubOptions) {
+  await subscriber.subscribe('getFrames', 'getFrame', 'cancel');
+
+  subscriber.on('message', async (channel, message) => {
     const data = JSON.parse(message);
 
     // We ignore any job that is not listed here.
     // eslint-disable-next-line default-case
     switch (channel) {
       case 'getFrames': {
-        redisDB.publish('getFrames:response', JSON.stringify({
+        publisher.publish('getFrames:response', JSON.stringify({
           id: data.id,
           frames: await getFrames(data.id),
         }));
@@ -158,7 +165,7 @@ async function start() {
       }
 
       case 'getFrame': {
-        redisDB.publish('getFrame:response', JSON.stringify({
+        publisher.publish('getFrame:response', JSON.stringify({
           id: data.id,
           frame: await getFrame({
             id: data.id,
@@ -175,6 +182,54 @@ async function start() {
         break;
       }
     }
+  });
+}
+
+async function start() {
+  const redisDB = new Redis({
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
+    maxRetriesPerRequest: null,
+  });
+
+  const redisSub = new Redis({
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
+    maxRetriesPerRequest: null,
+  });
+
+  const minioClient = new minio.Client({
+    endPoint: process.env.MINIO_ENDPOINT,
+    port: Number(process.env.MINIO_PORT),
+    accessKey: process.env.MINIO_ACCESS_KEY,
+    secretKey: process.env.MINIO_SECRET_KEY,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+  });
+
+  const queueStore = createQueueStore(redisDB);
+  const workDir = path.join(os.tmpdir(), 'ai-upscaler');
+  const localStorage = await createLocalStorage(workDir);
+  const uploadStorage = createMinioStorage(minioClient, 'uploads');
+  const downloadStorage = createMinioStorage(minioClient, 'downloads');
+  const events = new EventEmitter();
+
+  initializeWorker({
+    workDir,
+    events,
+    localStorage,
+    uploadStorage,
+    downloadStorage,
+    redis: redisDB,
+    queueStore,
+  });
+
+  initializePubSub({
+    publisher: redisDB,
+    subscriber: redisSub,
+
+    getFrames: createGetFrames(localStorage),
+    getFrame: createGetFrame(localStorage),
+    cancel: createCancel(events),
   });
 
   console.log('Worker started');

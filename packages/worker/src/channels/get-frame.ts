@@ -3,14 +3,14 @@ import concat from 'concat-stream';
 import { LocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { DIR_FRAMES, DIR_ENHANCED_FRAMES } from '../upscaler/upscaler';
 
-interface GetFrameRequest {
+export interface GetFrameRequest {
   id: string;
   frame: string;
   enhanced: boolean;
 }
 
 export default function createGetFrame(storage: LocalStorage) {
-  return async function getFrame({ id, frame, enhanced }: GetFrameRequest) {
+  return async function getFrame({ id, frame, enhanced }: GetFrameRequest): Promise<ReturnType<Buffer['toJSON']>> {
     const dir = enhanced
       ? DIR_ENHANCED_FRAMES
       : DIR_FRAMES;
