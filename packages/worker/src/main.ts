@@ -149,33 +149,36 @@ async function initializePubSub({
 }: PubSubOptions) {
   await subscriber.subscribe('getFrames', 'getFrame', 'cancel');
 
-  subscriber.on('message', async (channel, message) => {
+  subscriber.on('message', (channel, message) => {
     const data = JSON.parse(message);
 
     // We ignore any job that is not listed here.
     // eslint-disable-next-line default-case
     switch (channel) {
       case 'getFrames': {
-        publisher.publish('getFrames:response', JSON.stringify({
-          id: data.id,
-          frames: await getFrames(data.id),
-        }));
+        getFrames(data.id).then((frames) => {
+          publisher.publish('getFrames:response', JSON.stringify({
+            id: data.id,
+            frames,
+          }));
+        });
 
         break;
       }
 
       case 'getFrame': {
-        publisher.publish('getFrame:response', JSON.stringify({
+        getFrame({
           id: data.id,
           frame: data.frame,
           enhanced: data.enhanced,
-          data: await getFrame({
+        }).then((buffer) => {
+          publisher.publish('getFrame:response', JSON.stringify({
             id: data.id,
             frame: data.frame,
             enhanced: data.enhanced,
-          }),
-        }));
-
+            data: buffer,
+          }));
+        });
         break;
       }
 
