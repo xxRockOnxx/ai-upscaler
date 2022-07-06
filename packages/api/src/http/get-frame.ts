@@ -1,4 +1,4 @@
-import { Queue, QueueEvents, QueueEventsListener } from 'bullmq';
+import { Redis } from 'ioredis';
 import { RouteHandler as BaseRouteHandler } from 'fastify';
 
 type RouteHandler = BaseRouteHandler<{
@@ -11,51 +11,46 @@ type RouteHandler = BaseRouteHandler<{
 }>
 
 interface GetFrameOptions {
-  commandQueue: Queue
-  commandEvents: QueueEvents
+  publish: Redis
+  subscribe: Redis
+  timeout: number
 }
 
 export default function createGetFrame({
-  commandQueue,
-  commandEvents,
+  publish,
+  subscribe,
+  timeout,
 }: GetFrameOptions): RouteHandler {
   return async function getFrame(request, reply) {
     const id = request.cookies.queue;
     const enhanced = request.query.enhanced === 'true';
-    const job = await commandQueue.add('getFrame', {
+
+    publish.publish('getFrame', JSON.stringify({
       id,
       enhanced,
       frame: request.params.frame,
-    });
+    }));
 
-    const completeListener: QueueEventsListener['completed'] = function completeListener(job2) {
-      if (job.id === job2.jobId) {
-        commandEvents
-          .off('completed', completeListener)
-          // eslint-disable-next-line no-use-before-define
-          .off('failed', failedListener);
+    subscribe.on('message', function listener(channel, message) {
+      const data = JSON.parse(message);
 
+      const timeoutId = setTimeout(() => {
+        reply
+          .code(404)
+          .send();
+
+        subscribe.off('message', listener);
+      }, timeout);
+
+      if (channel === 'getFrame:response' && data.id === id) {
         reply
           .type('image/png')
-          .send(Buffer.from((job2.returnvalue as unknown as { data: number[]}).data));
+          .send(Buffer.from(data.frame));
+
+        subscribe.off('message', listener);
+        clearTimeout(timeoutId);
       }
-    };
-
-    const failedListener: QueueEventsListener['failed'] = function failedListener(job2) {
-      if (job.id === job2.jobId) {
-        commandEvents
-          .off('completed', completeListener)
-          .off('failed', failedListener);
-
-        reply
-          .code(500)
-          .send();
-      }
-    };
-
-    commandEvents
-      .on('completed', completeListener)
-      .on('failed', failedListener);
+    });
 
     return reply;
   };

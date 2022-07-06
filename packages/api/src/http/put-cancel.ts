@@ -1,18 +1,18 @@
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
-import { Queue } from 'bullmq';
 import { RouteHandler } from 'fastify';
+import Redis from 'ioredis';
 
 interface PutCancelOptions {
   queue: QueueStore
   jobs: JobStore
-  bull: Queue
+  publish: Redis
 }
 
 export default function createPutCancel({
   queue,
   jobs,
-  bull,
+  publish,
 }: PutCancelOptions): RouteHandler {
   return async function putCancel(request, reply) {
     const queueList = await queue.getAll();
@@ -31,9 +31,9 @@ export default function createPutCancel({
         .send();
     }
 
-    bull.add('cancel', {
+    publish.publish('cancel', JSON.stringify({
       id: request.cookies.queue,
-    });
+    }));
 
     return reply
       .status(204)

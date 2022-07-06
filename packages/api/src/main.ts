@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { Queue, QueueEvents } from 'bullmq';
+import { Queue } from 'bullmq';
 import { preHandlerAsyncHookHandler } from 'fastify';
 import * as minio from 'minio';
 import * as os from 'os';
@@ -56,12 +56,13 @@ async function start() {
     port: Number(process.env.REDIS_PORT),
   });
 
-  // This will be used by BullMQ
-  const redisQueue = new Redis({
+  const redisSub = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
     maxRetriesPerRequest: null,
   });
+
+  await redisSub.subscribe('getFrames:response', 'getFrame:response');
 
   const minioClient = new minio.Client({
     endPoint: process.env.MINIO_ENDPOINT,
@@ -79,15 +80,7 @@ async function start() {
   const tmpStorage = await createLocalStorage(path.join(os.tmpdir(), 'ai-upscaler'));
 
   const upscaleQueue = new Queue('upscaler', {
-    connection: redisQueue,
-  });
-
-  const commandQueue = new Queue('command', {
-    connection: redisQueue,
-  });
-
-  const commandEvents = new QueueEvents('command', {
-    connection: redisQueue,
+    connection: redisDB,
   });
 
   const server = await createServer();
@@ -131,8 +124,9 @@ async function start() {
     url: '/frames',
     preHandler: [createAssertQueue(queue)],
     handler: getFrames({
-      commandQueue,
-      commandEvents,
+      publish: redisDB,
+      subscribe: redisSub,
+      timeout: 5000,
     }),
   });
 
@@ -141,8 +135,9 @@ async function start() {
     url: '/frame/:frame',
     preHandler: [createAssertQueue(queue)],
     handler: getFrame({
-      commandQueue,
-      commandEvents,
+      publish: redisDB,
+      subscribe: redisSub,
+      timeout: 5000,
     }),
   });
 
@@ -173,7 +168,7 @@ async function start() {
     url: '/cancel',
     preHandler: [createAssertQueue(queue)],
     handler: putCancel({
-      bull: commandQueue,
+      publish: redisDB,
       jobs,
       queue,
     }),

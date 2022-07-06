@@ -1,46 +1,38 @@
-import { Queue, QueueEvents, QueueEventsListener } from 'bullmq';
+import { Redis } from 'ioredis';
 import { RouteHandler } from 'fastify';
 
 interface GetFramesOptions {
-  commandQueue: Queue
-  commandEvents: QueueEvents
+  publish: Redis
+  subscribe: Redis
+  timeout: number
 }
 
 export default function createGetFrames({
-  commandQueue,
-  commandEvents,
+  publish,
+  subscribe,
+  timeout,
 }: GetFramesOptions): RouteHandler {
   return async function getFrames(request, reply) {
     const id = request.cookies.queue;
-    const job = await commandQueue.add('getFrames', { id });
 
-    const completeListener: QueueEventsListener['completed'] = function completeListener(job2) {
-      if (job.id === job2.jobId) {
-        commandEvents
-          .off('completed', completeListener)
-          // eslint-disable-next-line no-use-before-define
-          .off('failed', failedListener);
+    publish.publish('getFrames', JSON.stringify({
+      id,
+    }));
 
-        reply
-          .send(job2.returnvalue);
+    subscribe.on('message', function listener(channel, message) {
+      const data = JSON.parse(message);
+
+      const timeoutId = setTimeout(() => {
+        reply.send([]);
+        subscribe.off('message', listener);
+      }, timeout);
+
+      if (channel === 'getFrames:response' && data.id === id) {
+        reply.send(data.frames);
+        subscribe.off('message', listener);
+        clearTimeout(timeoutId);
       }
-    };
-
-    const failedListener: QueueEventsListener['failed'] = function failedListener(job2) {
-      if (job.id === job2.jobId) {
-        commandEvents
-          .off('completed', completeListener)
-          .off('failed', failedListener);
-
-        reply
-          .code(500)
-          .send();
-      }
-    };
-
-    commandEvents
-      .on('completed', completeListener)
-      .on('failed', failedListener);
+    });
 
     return reply;
   };

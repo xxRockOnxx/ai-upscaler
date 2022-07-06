@@ -4,14 +4,14 @@ import { v4 as uuid } from 'uuid';
 import * as path from 'path';
 import * as os from 'os';
 import * as minio from 'minio';
-import * as fs from 'fs-extra';
-import concat from 'concat-stream';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import createLocalStorage from '@ai-upscaler/core/src/storage/local';
 import createMinioStorage from '@ai-upscaler/core/src/storage/minio';
-import upscaler, { DIR_ENHANCED_FRAMES, DIR_FRAMES } from './upscaler/upscaler';
-import scopeEventEmitter from './events';
+import upscaler from './upscaler/upscaler';
+import createGetFrames from './channels/get-frames';
+import createGetFrame from './channels/get-frame';
+import createCancel from './channels/cancel';
 
 const requiredEnvVariables = [
   'REDIS_HOST',
@@ -36,9 +36,10 @@ async function start() {
   const redisDB = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
+    maxRetriesPerRequest: null,
   });
 
-  const redisQueue = new Redis({
+  const redisSub = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
     maxRetriesPerRequest: null,
@@ -52,6 +53,7 @@ async function start() {
     useSSL: process.env.MINIO_USE_SSL === 'true',
   });
 
+  const queueStore = createQueueStore(redisDB);
   const workDir = path.join(os.tmpdir(), 'ai-upscaler');
   const localStorage = await createLocalStorage(workDir);
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
@@ -103,51 +105,9 @@ async function start() {
     },
 
     {
-      connection: redisQueue,
+      connection: redisDB,
     },
   );
-
-  const commandWorker = new Worker(
-    'command',
-
-    // eslint-disable-next-line consistent-return
-    async (job) => {
-      // We ignore any job that is not listed here.
-      // eslint-disable-next-line default-case
-      switch (job.name) {
-        case 'getFrames': {
-          return fs.readdir(localStorage.path(path.join(job.data.id, DIR_ENHANCED_FRAMES)));
-        }
-
-        case 'getFrame': {
-          const dir = job.data.enhanced
-            ? DIR_ENHANCED_FRAMES
-            : DIR_FRAMES;
-
-          return localStorage
-            .get(path.join(job.data.id, dir, job.data.frame))
-            .then((stream) => new Promise((resolve, reject) => {
-              stream
-                .on('error', reject)
-                .pipe(concat((data) => resolve(data)));
-            }));
-        }
-
-        case 'cancel': {
-          const scopedEvents = scopeEventEmitter(events, job.data.id);
-          scopedEvents.emit('cancel');
-          break;
-        }
-      }
-    },
-
-    {
-      connection: redisQueue,
-      concurrency: 3,
-    },
-  );
-
-  const queueStore = createQueueStore(redisDB);
 
   upscaleWorker.on('completed', (job) => {
     console.log('Upscale complete');
@@ -176,12 +136,45 @@ async function start() {
     uploadStorage.delete(job.data.input);
   });
 
-  commandWorker.on('failed', (job) => {
-    console.error('Command failed', {
-      name: job.name,
-      data: job.data,
-      reason: job.failedReason,
-    });
+  await redisSub.subscribe('getFrames', 'getFrame', 'cancel');
+
+  const getFrames = createGetFrames(localStorage);
+  const getFrame = createGetFrame(localStorage);
+  const cancel = createCancel(events);
+
+  redisSub.on('message', async (channel, message) => {
+    const data = JSON.parse(message);
+
+    // We ignore any job that is not listed here.
+    // eslint-disable-next-line default-case
+    switch (channel) {
+      case 'getFrames': {
+        redisDB.publish('getFrames:response', JSON.stringify({
+          id: data.id,
+          frames: await getFrames(data.id),
+        }));
+
+        break;
+      }
+
+      case 'getFrame': {
+        redisDB.publish('getFrame:response', JSON.stringify({
+          id: data.id,
+          frame: await getFrame({
+            id: data.id,
+            frame: data.frame,
+            enhanced: data.enhanced,
+          }),
+        }));
+
+        break;
+      }
+
+      case 'cancel': {
+        cancel(data.id);
+        break;
+      }
+    }
   });
 
   console.log('Worker started');
