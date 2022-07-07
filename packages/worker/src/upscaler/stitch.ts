@@ -17,6 +17,8 @@ export const stitchFrames: Task<StitchData, void> = function stitchFrames({
   onDone,
   onError,
 }) {
+  let cancelled = false;
+
   const command = ffmpeg(input)
     .inputFps(framerate)
     .output(output)
@@ -31,11 +33,16 @@ export const stitchFrames: Task<StitchData, void> = function stitchFrames({
       onProgress(100);
       onDone();
     })
-    .on('error', onError);
+    .on('error', (err) => {
+      if (!cancelled) {
+        onError(err);
+      }
+    });
 
   command.run();
 
   return () => {
+    cancelled = true;
     command.kill('');
   };
 };

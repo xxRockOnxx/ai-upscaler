@@ -16,6 +16,7 @@ export const extractFrames: Task<ExtractData, string[]> = function extractFrames
   onError,
 }) {
   let details;
+  let cancelled = false;
   let frames = [];
   const dirPath = path.dirname(data.output);
 
@@ -50,9 +51,16 @@ export const extractFrames: Task<ExtractData, string[]> = function extractFrames
       onProgress(100, await getNewFrames());
       onDone(details);
     })
-    .on('error', onError);
+    .on('error', (err) => {
+      if (!cancelled) {
+        onError(err);
+      }
+    });
 
   command.run();
 
-  return () => command.kill('');
+  return () => {
+    cancelled = true;
+    command.kill('');
+  };
 };

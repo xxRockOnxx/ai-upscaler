@@ -51,11 +51,16 @@ export const enhanceFrames: Task<EnhanceData, void> = function enhanceFrames({
   onDone,
   onError,
 }) {
+  let cancelled = false;
   let cancelFn: () => void;
 
   fs
     .readdir(data.input)
     .then(async (frames) => {
+      if (cancelled) {
+        return;
+      }
+
       // eslint-disable-next-line no-restricted-syntax
       for (const [i, frame] of frames.entries()) {
         // Parallelization won't help here.
@@ -76,10 +81,20 @@ export const enhanceFrames: Task<EnhanceData, void> = function enhanceFrames({
         onProgress(progressPercent, [frame]);
       }
     })
-    .then(onDone)
-    .catch(onError);
+    .then(() => {
+      if (!cancelled) {
+        onDone();
+      }
+    })
+    .catch((err) => {
+      if (!cancelled) {
+        onError(err);
+      }
+    });
 
   return () => {
+    cancelled = true;
+
     if (cancelFn) {
       cancelFn();
     }
