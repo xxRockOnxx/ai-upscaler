@@ -70,7 +70,10 @@ export const enhanceFrames: Task<EnhanceData, void> = function enhanceFrames({
           });
         });
 
-        onProgress(((i + 1) / frames.length) * 100);
+        const progressPercent = ((i + 1) / frames.length) * 100;
+
+        // Pass frame as array to be consistent with ffmpeg tasks.
+        onProgress(progressPercent, [frame]);
       }
     })
     .then(onDone)

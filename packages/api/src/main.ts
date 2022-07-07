@@ -7,8 +7,8 @@ import * as path from 'path';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import createJobsStore from '@ai-upscaler/core/src/jobs/redis';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
-import createLocalStorage from '@ai-upscaler/core/src/storage/local';
-import createMinioStorage from '@ai-upscaler/core/src/storage/minio';
+import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
+import { createStorage as createMinioStorage, createFrameStorage } from '@ai-upscaler/core/src/storage/minio';
 import createServer from './server';
 import getQueue from './http/get-queue';
 import getAvailability from './http/get-availability';
@@ -124,9 +124,8 @@ async function start() {
     url: '/frames',
     preHandler: [createAssertQueue(queue)],
     handler: getFrames({
-      publish: redisDB,
-      subscribe: redisSub,
-      timeout: 5000,
+      jobs,
+      createStorage: (id) => createFrameStorage(minioClient, 'frames', id),
     }),
   });
 
@@ -135,9 +134,8 @@ async function start() {
     url: '/frame/:frame',
     preHandler: [createAssertQueue(queue)],
     handler: getFrame({
-      publish: redisDB,
-      subscribe: redisSub,
-      timeout: 5000,
+      jobs,
+      createStorage: (id) => createFrameStorage(minioClient, 'frames', id),
     }),
   });
 

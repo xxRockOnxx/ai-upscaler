@@ -1,5 +1,6 @@
-import { Redis } from 'ioredis';
 import { RouteHandler as BaseRouteHandler } from 'fastify';
+import { JobStore } from '@ai-upscaler/core/src/jobs/store';
+import { FrameStorage } from '@ai-upscaler/core/src/storage/storage';
 
 type RouteHandler = BaseRouteHandler<{
   Querystring: {
@@ -11,51 +12,40 @@ type RouteHandler = BaseRouteHandler<{
 }>
 
 interface GetFrameOptions {
-  publish: Redis
-  subscribe: Redis
-  timeout: number
+  jobs: JobStore
+  createStorage(id: string): FrameStorage
 }
 
 export default function createGetFrame({
-  publish,
-  subscribe,
-  timeout,
+  jobs,
+  createStorage,
 }: GetFrameOptions): RouteHandler {
   return async function getFrame(request, reply) {
     const id = request.cookies.queue;
     const enhanced = request.query.enhanced === 'true';
     const { frame } = request.params;
 
-    publish.publish('getFrame', JSON.stringify({
-      id,
-      enhanced,
-      frame,
-    }));
+    const job = await jobs.get(id);
 
-    subscribe.on('message', function listener(channel, message) {
-      const data = JSON.parse(message);
+    if (!job) {
+      return reply
+        .code(400)
+        .send({
+          message: 'Job not found',
+        });
+    }
 
-      const timeoutId = setTimeout(() => {
-        reply
-          .code(404)
-          .send();
+    const storage = createStorage(job);
+    const stream = await storage.getFrame(frame, enhanced);
 
-        subscribe.off('message', listener);
-      }, timeout);
+    if (!stream) {
+      return reply
+        .code(404)
+        .send();
+    }
 
-      if (channel === 'getFrame:response'
-          && data.id === id
-          && data.frame === frame
-          && data.enhanced === enhanced) {
-        reply
-          .type('image/png')
-          .send(Buffer.from(data.data));
-
-        subscribe.off('message', listener);
-        clearTimeout(timeoutId);
-      }
-    });
-
-    return reply;
+    return reply
+      .type('image/png')
+      .send(stream);
   };
 }

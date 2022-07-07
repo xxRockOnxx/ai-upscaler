@@ -2,7 +2,7 @@ import { ScopedEvent, ScopedEventEmitter } from '../events';
 
 export interface TaskOption<T, R> {
   data: T
-  onProgress(progress: number): void
+  onProgress(progress: number, ...args: any[]): void
   onDone(value: R): void
   onError(error: Error): void
 }
@@ -64,8 +64,8 @@ export function makeTaskEmitEvents<N extends string, T, R>(
       events.off(`${task.name}:cancel`, cancelListener);
     },
 
-    onProgress(progress) {
-      events.emit(`${task.name}:progress`, progress);
+    onProgress(progress, ...args: any[]) {
+      events.emit(`${task.name}:progress`, progress, ...args);
     },
   });
 }

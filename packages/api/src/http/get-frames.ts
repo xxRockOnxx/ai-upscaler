@@ -1,39 +1,31 @@
-import { Redis } from 'ioredis';
+import { JobStore } from '@ai-upscaler/core/src/jobs/store';
+import { FrameStorage } from '@ai-upscaler/core/src/storage/storage';
 import { RouteHandler } from 'fastify';
 
 interface GetFramesOptions {
-  publish: Redis
-  subscribe: Redis
-  timeout: number
+  jobs: JobStore
+  createStorage(id: string): FrameStorage
 }
 
 export default function createGetFrames({
-  publish,
-  subscribe,
-  timeout,
+  jobs,
+  createStorage,
 }: GetFramesOptions): RouteHandler {
   return async function getFrames(request, reply) {
     const id = request.cookies.queue;
+    const job = await jobs.get(id);
 
-    publish.publish('getFrames', JSON.stringify({
-      id,
-    }));
+    if (!job) {
+      return reply
+        .code(400)
+        .send({
+          message: 'Job not found',
+        });
+    }
 
-    subscribe.on('message', function listener(channel, message) {
-      const data = JSON.parse(message);
+    const storage = createStorage(job);
+    const frames = await storage.getFrames(true);
 
-      const timeoutId = setTimeout(() => {
-        reply.send([]);
-        subscribe.off('message', listener);
-      }, timeout);
-
-      if (channel === 'getFrames:response' && data.id === id) {
-        reply.send(data.frames);
-        subscribe.off('message', listener);
-        clearTimeout(timeoutId);
-      }
-    });
-
-    return reply;
+    return reply.send(frames);
   };
 }

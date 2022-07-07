@@ -1,20 +1,18 @@
 import Redis from 'ioredis';
 import { Worker } from 'bullmq';
 import { v4 as uuid } from 'uuid';
+import fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as minio from 'minio';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
-import { Storage } from '@ai-upscaler/core/src/storage/storage';
-import createLocalStorage from '@ai-upscaler/core/src/storage/local';
-import createMinioStorage from '@ai-upscaler/core/src/storage/minio';
+import { FrameStorage, Storage } from '@ai-upscaler/core/src/storage/storage';
+import { createStorage as createLocalStorage, LocalStorage } from '@ai-upscaler/core/src/storage/local';
+import { createStorage as createMinioStorage, createFrameStorage } from '@ai-upscaler/core/src/storage/minio';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { upscale } from './upscaler/upscaler';
-import createGetFrames from './channels/get-frames';
-import createGetFrame, { GetFrameRequest } from './channels/get-frame';
 import createCancel from './channels/cancel';
-import { UpscalerStorage } from './upscaler/storage';
 import { scopeEventEmitter } from './events';
 
 const requiredEnvVariables = [
@@ -40,37 +38,31 @@ export const DIR_FRAMES = 'frames';
 export const DIR_ENHANCED_FRAMES = 'enhanced_frames';
 
 interface WorkerOptions {
-  workDir: string
-  events: EventEmitter
+  // We define these functions as factory functions
+  // because we store multiple files in these storages
+  // and we want them to be scoped so we want custom storage
+  // instances for each job.
+  createLocalStorageForJob(id: string): Promise<LocalStorage>
+  createFrameStorageForJob(id: string): FrameStorage
 
+  // Downloads and Uploads are stored in a flat directory because
+  // we only store one file so no need for factory functions.
   uploadStorage: Storage
   downloadStorage: Storage
 
+  events: EventEmitter
   redis: Redis
   queueStore: QueueStore
 }
 
-function createUpscalerStorage(workDir: string): UpscalerStorage {
-  return {
-    framesPath(relativePath) {
-      return relativePath
-        ? path.join(workDir, DIR_FRAMES, relativePath)
-        : path.join(workDir, DIR_FRAMES);
-    },
-
-    enhancedFramesPath(relativePath) {
-      return relativePath
-        ? path.join(workDir, DIR_ENHANCED_FRAMES, relativePath)
-        : path.join(workDir, DIR_ENHANCED_FRAMES);
-    },
-  };
-}
-
 function initializeWorker({
-  workDir,
-  events,
   uploadStorage,
   downloadStorage,
+
+  createLocalStorageForJob,
+  createFrameStorageForJob,
+
+  events,
   redis,
   queueStore,
 }: WorkerOptions) {
@@ -85,31 +77,68 @@ function initializeWorker({
         });
       }
 
-      const scopedEvents = scopeEventEmitter(events, job.data.id);
-      const scopedLocalStorage = await createLocalStorage(path.join(workDir, job.data.id));
+      const scopedEvents = scopeEventEmitter(events, job.id);
+      const workStorage = await createLocalStorageForJob(job.id);
+      const frameStorage = createFrameStorageForJob(job.id);
 
       // Download file to local filesystem
       const fileStream = await uploadStorage.get(job.data.input);
       const filename = uuid();
       const filenameEnhanced = `${filename}_enhanced`;
-      await scopedLocalStorage.store(filename, fileStream);
+      await workStorage.store(filename, fileStream);
 
+      // Handlers that update the job progress
       scopedEvents
         .on('extract:progress', (progress) => updateTaskProgress('extract', progress))
         .on('enhance:progress', (progress) => updateTaskProgress('enhance', progress))
         .on('stitch:progress', (progress) => updateTaskProgress('stitch', progress));
 
+      const upscalerPaths = {
+        frames(relativePath?) {
+          if (relativePath) {
+            return workStorage.path(path.join(DIR_FRAMES, relativePath));
+          }
+
+          return workStorage.path(DIR_FRAMES);
+        },
+
+        enhancedFrames(relativePath?) {
+          if (relativePath) {
+            return workStorage.path(path.join(DIR_ENHANCED_FRAMES, relativePath));
+          }
+
+          return workStorage.path(DIR_ENHANCED_FRAMES);
+        },
+      };
+
+      // Handlers that will store the frames so other services/servers can access them
+      scopedEvents
+        .on('extract:progress', async (_, frames) => {
+          frames.forEach((frame: string) => {
+            const framePath = upscalerPaths.frames(frame);
+            frameStorage.storeFrame(frame, fs.createReadStream(framePath), false);
+          });
+        })
+        .on('enhance:progress', async (_, frames) => {
+          frames.forEach((frame: string) => {
+            const framePath = upscalerPaths.enhancedFrames(frame);
+            frameStorage.storeFrame(frame, fs.createReadStream(framePath), true);
+          });
+        });
+
       // Enhance video
       await upscale({
-        input: scopedLocalStorage.path(filename),
-        output: scopedLocalStorage.path(filenameEnhanced),
+        input: workStorage.path(filename),
+        output: workStorage.path(filenameEnhanced),
         emitter: scopedEvents,
-        storage: createUpscalerStorage(path.join(workDir, job.id)),
+        paths: upscalerPaths,
       });
 
+      scopedEvents.removeAllListeners();
+
       // Upload enhanced video
-      const enhancedFile = await scopedLocalStorage.get(filenameEnhanced);
-      await downloadStorage.store(job.data.id, enhancedFile);
+      const enhancedFile = await workStorage.get(filenameEnhanced);
+      await downloadStorage.store(job.id, enhancedFile);
     },
 
     {
@@ -126,6 +155,13 @@ function initializeWorker({
 
     // Video is enhanced. No need to keep the raw video.
     uploadStorage.delete(job.data.input);
+
+    // Delete both raw and enhanced frames
+    createFrameStorageForJob(job.id).deleteFrames(false);
+    createFrameStorageForJob(job.id).deleteFrames(true);
+
+    // Delete the work storage
+    createLocalStorageForJob(job.data.id).then((storage) => storage.destroy());
   });
 
   upscaleWorker.on('failed', (job) => {
@@ -142,26 +178,26 @@ function initializeWorker({
     // We currently do not support job retry.
     // No need to keep the raw video.
     uploadStorage.delete(job.data.input);
+
+    // Delete both raw and enhanced frames.
+    createFrameStorageForJob(job.id).deleteFrames(false);
+    createFrameStorageForJob(job.id).deleteFrames(true);
+
+    // Delete the work storage
+    createLocalStorageForJob(job.data.id).then((storage) => storage.destroy());
   });
 }
 
 interface PubSubOptions {
-  publisher: Redis
   subscriber: Redis
-
-  getFrames: (id: string) => Promise<string[]>
-  getFrame: (payload: GetFrameRequest) => Promise<ReturnType<Buffer['toJSON']>>
   cancel: (id: string) => void
 }
 
 async function initializePubSub({
-  publisher,
   subscriber,
-  getFrames,
-  getFrame,
   cancel,
 }: PubSubOptions) {
-  await subscriber.subscribe('getFrames', 'getFrame', 'cancel');
+  await subscriber.subscribe('cancel');
 
   subscriber.on('message', (channel, message) => {
     const data = JSON.parse(message);
@@ -169,33 +205,6 @@ async function initializePubSub({
     // We ignore any job that is not listed here.
     // eslint-disable-next-line default-case
     switch (channel) {
-      case 'getFrames': {
-        getFrames(data.id).then((frames) => {
-          publisher.publish('getFrames:response', JSON.stringify({
-            id: data.id,
-            frames,
-          }));
-        });
-
-        break;
-      }
-
-      case 'getFrame': {
-        getFrame({
-          id: data.id,
-          frame: data.frame,
-          enhanced: data.enhanced,
-        }).then((buffer) => {
-          publisher.publish('getFrame:response', JSON.stringify({
-            id: data.id,
-            frame: data.frame,
-            enhanced: data.enhanced,
-            data: buffer,
-          }));
-        });
-        break;
-      }
-
       case 'cancel': {
         cancel(data.id);
         break;
@@ -227,26 +236,24 @@ async function start() {
 
   const queueStore = createQueueStore(redisDB);
   const workDir = path.join(os.tmpdir(), 'ai-upscaler');
-  const localStorage = await createLocalStorage(workDir);
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
   const events = new EventEmitter();
 
   initializeWorker({
-    workDir,
-    events,
     uploadStorage,
     downloadStorage,
+
+    createFrameStorageForJob: (id) => createFrameStorage(minioClient, 'frames', id),
+    createLocalStorageForJob: (id) => createLocalStorage(path.join(workDir, id)),
+
+    events,
     redis: redisDB,
     queueStore,
   });
 
   initializePubSub({
-    publisher: redisDB,
     subscriber: redisSub,
-
-    getFrames: createGetFrames(localStorage),
-    getFrame: createGetFrame(localStorage),
     cancel: createCancel(events),
   });
 

@@ -20,3 +20,10 @@ export interface Storage {
    */
   delete(id: string): Promise<void>
 }
+
+export interface FrameStorage {
+  getFrames(enhanced: boolean): Promise<string[]>
+  getFrame(frame: string, enhanced: boolean): Promise<Readable | undefined>
+  storeFrame(frame: string, file: Readable, enhanced: boolean): Promise<void>
+  deleteFrames(enhanced: boolean): Promise<void>
+}

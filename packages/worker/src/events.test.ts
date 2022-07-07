@@ -39,4 +39,18 @@ describe('events.ts', () => {
     expect(scoped.eventNames()).toEqual(['closed']);
     expect(scoped.listenerCount('closed')).toBe(1);
   });
+
+  it('should remove scoped events only', () => {
+    const scoped = scopeEventEmitter(eventEmitter, 'user-1');
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    scoped.on('closed', () => undefined);
+    eventEmitter.on('closed', () => undefined);
+
+    scoped.removeAllListeners();
+
+    expect(scoped.eventNames()).toEqual([]);
+    expect(eventEmitter.eventNames()).toEqual(expect.arrayContaining(['closed']));
+  });
 });

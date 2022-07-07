@@ -4,13 +4,16 @@ import { extractFrames } from './extract';
 import { enhanceFrames } from './enhance';
 import { stitchFrames } from './stitch';
 import { DeferredTask, makeTaskEmitEvents, taskEventToPromise } from './task';
-import { UpscalerStorage } from './storage';
 
+interface UpscalerPaths {
+  frames(relativePath?: string): string
+  enhancedFrames(relativePath?: string): string
+}
 interface UpscaleOption {
   input: string
   output: string
   emitter: EventEmitter
-  storage: UpscalerStorage
+  paths: UpscalerPaths
 }
 
 export const FRAME_NAME = 'frame_%03d.png';
@@ -19,11 +22,11 @@ export async function upscale({
   input,
   output,
   emitter,
-  storage,
+  paths,
 }: UpscaleOption) {
   await Promise.all([
-    fs.emptyDir(storage.framesPath()),
-    fs.emptyDir(storage.enhancedFramesPath()),
+    fs.emptyDir(paths.frames()),
+    fs.emptyDir(paths.enhancedFrames()),
   ]);
 
   // The next 2 functions are created simply to avoid adding the same parameters repeatedly.
@@ -40,7 +43,7 @@ export async function upscale({
     callback: extractFrames,
     data: {
       input,
-      output: storage.framesPath(FRAME_NAME),
+      output: paths.frames(FRAME_NAME),
     },
   });
 
@@ -50,8 +53,8 @@ export async function upscale({
     name: 'enhance',
     callback: enhanceFrames,
     data: {
-      input: storage.framesPath(),
-      output: storage.enhancedFramesPath(),
+      input: paths.frames(),
+      output: paths.enhancedFrames(),
     },
   });
 
@@ -62,7 +65,7 @@ export async function upscale({
     callback: stitchFrames,
     data: {
       output,
-      input: storage.enhancedFramesPath(FRAME_NAME),
+      input: paths.enhancedFrames(FRAME_NAME),
       framerate: Number(videoDetails
         .find((detail) => detail.includes('fps'))
         .split('fps')[0]),

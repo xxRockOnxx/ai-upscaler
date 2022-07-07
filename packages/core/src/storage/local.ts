@@ -2,19 +2,24 @@ import fs from 'fs-extra';
 import path from 'path';
 import { pipeline } from 'stream';
 import { promisify } from 'util';
-import { Storage } from './storage';
+import { FrameStorage, Storage } from './storage';
 
 export interface LocalStorage extends Storage {
   /**
    * Get relative path from Storage's root
    * @param path - path to be appended from the Storage's root
    */
-  path(relativePath: string): string;
+  path(relativePath: string): string
 
-  readdir(dir: string): Promise<string[]>;
+  readdir(dir: string): Promise<string[]>
+
+  /**
+   * Delete the base directory and all its contents
+   */
+  destroy(): Promise<void>
 }
 
-export default async function createStorage(baseDir: string): Promise<LocalStorage> {
+export async function createStorage(baseDir: string): Promise<LocalStorage> {
   await fs.ensureDir(baseDir);
 
   return {
@@ -28,7 +33,11 @@ export default async function createStorage(baseDir: string): Promise<LocalStora
     },
 
     async delete(id) {
-      await fs.promises.rm(path.join(baseDir, id));
+      await fs.promises.rm(path.join(baseDir, id), { recursive: true });
+    },
+
+    destroy() {
+      return fs.promises.rm(baseDir, { recursive: true });
     },
 
     path(relativePath) {
@@ -45,6 +54,30 @@ export default async function createStorage(baseDir: string): Promise<LocalStora
 
           throw err;
         });
+    },
+  };
+}
+
+export function createFrameStorage(
+  storage: LocalStorage,
+  { raw: prefixRaw, enhanced: prefixEnhanced } = { raw: 'raw', enhanced: 'enhanced' },
+): FrameStorage {
+  return {
+    getFrames(enhanced = false) {
+      return storage.readdir(storage.path(enhanced ? prefixEnhanced : prefixRaw));
+    },
+
+    getFrame(frame, enhanced = false) {
+      return storage.get(storage.path(`${enhanced ? prefixEnhanced : prefixRaw}/${frame}`));
+    },
+
+    storeFrame(frame, file, enhanced = false) {
+      const outfile = path.join(enhanced ? prefixEnhanced : prefixRaw, frame);
+      return storage.store(outfile, file);
+    },
+
+    deleteFrames(enhanced = false) {
+      return storage.delete(storage.path(enhanced ? prefixEnhanced : prefixRaw));
     },
   };
 }

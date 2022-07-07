@@ -21,6 +21,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "fs-extra": "^10.1.0",
     "ioredis": "^5.1.0",
+    "lodash.difference": "^4.5.0",
     "minio": "^7.0.28",
     "ts-node": "^10.8.2",
     "uuid": "^8.3.2"

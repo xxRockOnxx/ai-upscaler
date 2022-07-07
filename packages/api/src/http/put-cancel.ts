@@ -32,7 +32,7 @@ export default function createPutCancel({
     }
 
     publish.publish('cancel', JSON.stringify({
-      id: request.cookies.queue,
+      id: job,
     }));
 
     return reply
