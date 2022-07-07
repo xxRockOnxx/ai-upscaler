@@ -1,116 +1,73 @@
 import * as fs from 'fs-extra';
-import * as path from 'path';
 import { EventEmitter } from 'events';
-import { Task } from './task';
 import { extractFrames } from './extract';
 import { enhanceFrames } from './enhance';
 import { stitchFrames } from './stitch';
-import scopeEventEmitter from '../events';
-
-interface UpscalerOptions {
-  workDir: string
-  events: EventEmitter
-}
+import { DeferredTask, makeTaskEmitEvents, taskEventToPromise } from './task';
+import { UpscalerStorage } from './storage';
 
 interface UpscaleOption {
-  id: string
   input: string
   output: string
+  emitter: EventEmitter
+  storage: UpscalerStorage
 }
 
-interface TaskPromise<T, R> {
-  name: string
-  data: T
-  callback: Task<T, R>
-}
-
-export const DIR_FRAMES = 'frames';
-export const DIR_ENHANCED_FRAMES = 'enhanced_frames';
 export const FRAME_NAME = 'frame_%03d.png';
 
-function createPromiseMaker(events: EventEmitter) {
-  return function createPromise<T, R>({ name, data, callback }: TaskPromise<T, R>) {
-    return new Promise<R>((resolve, reject) => {
-      let cancelled = false;
-      let cancelFn;
+export async function upscale({
+  input,
+  output,
+  emitter,
+  storage,
+}: UpscaleOption) {
+  await Promise.all([
+    fs.emptyDir(storage.framesPath()),
+    fs.emptyDir(storage.enhancedFramesPath()),
+  ]);
 
-      function cancelListener() {
-        cancelled = true;
-        cancelFn();
-      }
+  // The next 2 functions are created simply to avoid adding the same parameters repeatedly.
+  function curriedMakeTaskEmitEvents<N extends string, T, R>(task: DeferredTask<N, T, R>) {
+    return makeTaskEmitEvents(emitter, task);
+  }
 
-      cancelFn = callback({
-        data,
+  function curriedTaskEventToPromise(task: string) {
+    return taskEventToPromise(emitter, task);
+  }
 
-        onDone(value) {
-          resolve(value);
-          events.off('cancel', cancelListener);
-        },
+  curriedMakeTaskEmitEvents({
+    name: 'extract',
+    callback: extractFrames,
+    data: {
+      input,
+      output: storage.framesPath(FRAME_NAME),
+    },
+  });
 
-        onError(error) {
-          reject(cancelled ? new Error('Job cancelled by user') : error);
-          events.off('cancel', cancelListener);
-        },
+  const videoDetails = await curriedTaskEventToPromise('extract') as string[];
 
-        onProgress(progress) {
-          events.emit(`${name}:progress`, progress);
-        },
-      });
+  curriedMakeTaskEmitEvents({
+    name: 'enhance',
+    callback: enhanceFrames,
+    data: {
+      input: storage.framesPath(),
+      output: storage.enhancedFramesPath(),
+    },
+  });
 
-      events.once('cancel', cancelListener);
-    });
-  };
-}
+  await curriedTaskEventToPromise('enhance');
 
-export default function createUpscaler({ workDir, events }: UpscalerOptions) {
-  return function upscale({ id, input, output }: UpscaleOption) {
-    const scopedEvents = scopeEventEmitter(events, id);
-    const promiseMaker = createPromiseMaker(scopedEvents);
+  curriedMakeTaskEmitEvents({
+    name: 'stitch',
+    callback: stitchFrames,
+    data: {
+      output,
+      input: storage.enhancedFramesPath(FRAME_NAME),
+      framerate: Number(videoDetails
+        .find((detail) => detail.includes('fps'))
+        .split('fps')[0]),
+    },
+  });
 
-    const dirFrames = path.join(workDir, id, DIR_FRAMES);
-    const dirEnhanced = path.join(workDir, id, DIR_ENHANCED_FRAMES);
-
-    let videoDetails: string[];
-
-    Promise.all([
-      fs.emptyDir(dirFrames),
-      fs.emptyDir(dirEnhanced),
-    ])
-      .then(() => promiseMaker({
-        name: 'extract',
-        callback: extractFrames,
-        data: {
-          input,
-          output: path.join(dirFrames, FRAME_NAME),
-        },
-      }))
-      .then((videoDetails2) => {
-        videoDetails = videoDetails2;
-      })
-      .then(() => promiseMaker({
-        name: 'enhance',
-        callback: enhanceFrames,
-        data: {
-          input: dirFrames,
-          output: dirEnhanced,
-        },
-      }))
-      .then(() => promiseMaker({
-        name: 'stitch',
-        callback: stitchFrames,
-        data: {
-          output,
-          input: path.join(dirEnhanced, FRAME_NAME),
-          framerate: Number(videoDetails
-            .find((detail) => detail.includes('fps'))
-            .split('fps')[0]),
-        },
-      }))
-      .then(
-        () => scopedEvents.emit('done'),
-        (error) => scopedEvents.emit('error', error),
-      );
-
-    return scopedEvents;
-  };
+  await curriedTaskEventToPromise('stitch');
 }

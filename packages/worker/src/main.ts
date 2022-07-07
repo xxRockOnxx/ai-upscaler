@@ -7,13 +7,15 @@ import * as minio from 'minio';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import { Storage } from '@ai-upscaler/core/src/storage/storage';
-import createLocalStorage, { LocalStorage } from '@ai-upscaler/core/src/storage/local';
+import createLocalStorage from '@ai-upscaler/core/src/storage/local';
 import createMinioStorage from '@ai-upscaler/core/src/storage/minio';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
-import upscaler from './upscaler/upscaler';
+import { upscale } from './upscaler/upscaler';
 import createGetFrames from './channels/get-frames';
 import createGetFrame, { GetFrameRequest } from './channels/get-frame';
 import createCancel from './channels/cancel';
+import { UpscalerStorage } from './upscaler/storage';
+import { scopeEventEmitter } from './events';
 
 const requiredEnvVariables = [
   'REDIS_HOST',
@@ -34,11 +36,13 @@ for (const variable of requiredEnvVariables) {
   }
 }
 
+export const DIR_FRAMES = 'frames';
+export const DIR_ENHANCED_FRAMES = 'enhanced_frames';
+
 interface WorkerOptions {
   workDir: string
   events: EventEmitter
 
-  localStorage: LocalStorage
   uploadStorage: Storage
   downloadStorage: Storage
 
@@ -46,20 +50,30 @@ interface WorkerOptions {
   queueStore: QueueStore
 }
 
+function createUpscalerStorage(workDir: string): UpscalerStorage {
+  return {
+    framesPath(relativePath) {
+      return relativePath
+        ? path.join(workDir, DIR_FRAMES, relativePath)
+        : path.join(workDir, DIR_FRAMES);
+    },
+
+    enhancedFramesPath(relativePath) {
+      return relativePath
+        ? path.join(workDir, DIR_ENHANCED_FRAMES, relativePath)
+        : path.join(workDir, DIR_ENHANCED_FRAMES);
+    },
+  };
+}
+
 function initializeWorker({
   workDir,
   events,
-  localStorage,
   uploadStorage,
   downloadStorage,
   redis,
   queueStore,
 }: WorkerOptions) {
-  const upscale = upscaler({
-    workDir,
-    events,
-  });
-
   const upscaleWorker = new Worker(
     'upscaler',
 
@@ -71,30 +85,30 @@ function initializeWorker({
         });
       }
 
+      const scopedEvents = scopeEventEmitter(events, job.data.id);
+      const scopedLocalStorage = await createLocalStorage(path.join(workDir, job.data.id));
+
       // Download file to local filesystem
       const fileStream = await uploadStorage.get(job.data.input);
       const filename = uuid();
       const filenameEnhanced = `${filename}_enhanced`;
-      await localStorage.store(filename, fileStream);
+      await scopedLocalStorage.store(filename, fileStream);
+
+      scopedEvents
+        .on('extract:progress', (progress) => updateTaskProgress('extract', progress))
+        .on('enhance:progress', (progress) => updateTaskProgress('enhance', progress))
+        .on('stitch:progress', (progress) => updateTaskProgress('stitch', progress));
 
       // Enhance video
-      await new Promise((resolve, reject) => {
-        const task = upscale({
-          id: job.data.id,
-          input: localStorage.path(filename),
-          output: localStorage.path(filenameEnhanced),
-        });
-
-        task
-          .on('extract:progress', (progress) => updateTaskProgress('extract', progress))
-          .on('enhance:progress', (progress) => updateTaskProgress('enhance', progress))
-          .on('stitch:progress', (progress) => updateTaskProgress('stitch', progress))
-          .once('done', resolve)
-          .once('error', reject);
+      await upscale({
+        input: scopedLocalStorage.path(filename),
+        output: scopedLocalStorage.path(filenameEnhanced),
+        emitter: scopedEvents,
+        storage: createUpscalerStorage(path.join(workDir, job.id)),
       });
 
       // Upload enhanced video
-      const enhancedFile = await localStorage.get(filenameEnhanced);
+      const enhancedFile = await scopedLocalStorage.get(filenameEnhanced);
       await downloadStorage.store(job.data.id, enhancedFile);
     },
 
@@ -221,7 +235,6 @@ async function start() {
   initializeWorker({
     workDir,
     events,
-    localStorage,
     uploadStorage,
     downloadStorage,
     redis: redisDB,
