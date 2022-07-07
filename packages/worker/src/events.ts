@@ -1,52 +1,62 @@
 import { EventEmitter } from 'events';
 
-export default function scopeEventEmitter(events: EventEmitter, scope: string): EventEmitter {
+export type ScopedEvent<Scope extends string, Event extends string> = `${Scope}:${Event}`;
+
+export interface ScopedEventEmitter<Scope extends string> extends EventEmitter {
+  // eslint-disable-next-line max-len
+  on<Event extends string>(event: ScopedEvent<Scope, Event>, listener: (...args: any[]) => void): this;
+}
+
+// eslint-disable-next-line max-len
+export function scopeEventEmitter<S extends string>(events: EventEmitter, scope: S): ScopedEventEmitter<S> {
   return {
-    eventNames: () => events.eventNames().filter((name) => typeof name === 'string' && name.endsWith(`:${scope}`)),
+    eventNames: () => events.eventNames()
+      .filter((name) => typeof name === 'string' && name.startsWith(`${scope}:`))
+      .map((name: string) => name.replace(`${scope}:`, '')),
 
     on(event: string, listener) {
-      events.on(`${event}:${scope}`, listener);
+      events.on(`${scope}:${event}`, listener);
       return this;
     },
 
     addListener(event: string, listener) {
-      events.on(`${event}:${scope}`, listener);
+      events.on(`${scope}:${event}`, listener);
       return this;
     },
 
     off(event: string, listener) {
-      events.off(`${event}:${scope}`, listener);
+      events.off(`${scope}:${event}`, listener);
       return this;
     },
 
     removeListener(event: string, listener) {
-      events.off(`${event}:${scope}`, listener);
+      events.off(`${scope}:${event}`, listener);
       return this;
     },
 
     once(event: string, listener) {
-      events.once(`${event}:${scope}`, listener);
+      events.once(`${scope}:${event}`, listener);
       return this;
     },
 
     emit(event: string, ...args) {
-      events.emit(`${event}:${scope}`, ...args);
+      events.emit(`${scope}:${event}`, ...args);
       return this;
     },
 
     prependListener(event: string, listener) {
-      events.prependListener(`${event}:${scope}`, listener);
+      events.prependListener(`${scope}:${event}`, listener);
       return this;
     },
 
     prependOnceListener(event: string, listener) {
-      events.prependOnceListener(`${event}:${scope}`, listener);
+      events.prependOnceListener(`${scope}:${event}`, listener);
       return this;
     },
 
     removeAllListeners(event?: string) {
       if (event) {
-        events.removeAllListeners(`${event}:${scope}`);
+        events.removeAllListeners(`${scope}:${event}`);
         return this;
       }
 
@@ -57,9 +67,9 @@ export default function scopeEventEmitter(events: EventEmitter, scope: string): 
       return this;
     },
 
-    listeners: (event: string) => events.listeners(`${event}:${scope}`),
-    listenerCount: (event: string) => events.listeners(`${event}:${scope}`).length,
-    rawListeners: (event: string) => events.rawListeners(`${event}:${scope}`),
+    listeners: (event: string) => events.listeners(`${scope}:${event}`),
+    listenerCount: (event: string) => events.listeners(`${scope}:${event}`).length,
+    rawListeners: (event: string) => events.rawListeners(`${scope}:${event}`),
     getMaxListeners: () => events.getMaxListeners(),
     setMaxListeners: (n: number) => events.setMaxListeners(n),
   };

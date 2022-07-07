@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import scopeEventEmitter from './events';
+import { scopeEventEmitter } from './events';
 
 describe('events.ts', () => {
   let eventEmitter: EventEmitter;
@@ -30,10 +30,13 @@ describe('events.ts', () => {
   it('should return scoped events only', () => {
     const scoped = scopeEventEmitter(eventEmitter, 'user-1');
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     scoped.on('closed', () => undefined);
     eventEmitter.on('closed', () => undefined);
 
-    expect(scoped.eventNames()).toEqual(['closed:user-1']);
+    expect(eventEmitter.eventNames()).toEqual(expect.arrayContaining(['closed', 'user-1:closed']));
+    expect(scoped.eventNames()).toEqual(['closed']);
     expect(scoped.listenerCount('closed')).toBe(1);
   });
 });
