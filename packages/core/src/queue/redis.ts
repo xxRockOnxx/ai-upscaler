@@ -4,15 +4,26 @@ import { QueueError, QueueStore } from './store';
 export default function createStore(redis: Redis): QueueStore {
   return {
     async getAll() {
-      const raw = await redis.hgetall('queue');
-      const parsed = {};
+      redis.pipeline();
+      const keys = await redis.keys('queue:*');
 
-      // Redis returns null Object so there's no prototype.
-      // eslint-disable-next-line no-restricted-syntax,guard-for-in
-      for (const key in raw) {
-        parsed[key] = JSON.parse(raw[key]);
-        parsed[key].updatedAt = new Date(parsed[key].updatedAt);
-      }
+      const parsed = {};
+      const pipeline = redis.pipeline();
+
+      keys.forEach((key) => {
+        pipeline.hgetall(key, (err, result) => {
+          if (err) {
+            throw err;
+          }
+
+          const actualKey = key.replace('queue:', '');
+          parsed[actualKey] = result;
+          parsed[actualKey].position = parseInt(result.position, 10);
+          parsed[actualKey].updatedAt = new Date(result.updatedAt);
+        });
+      });
+
+      await pipeline.exec();
 
       return parsed;
     },
@@ -21,13 +32,14 @@ export default function createStore(redis: Redis): QueueStore {
       const list = await this.getAll();
 
       if (!list[id]) {
-        const position = Object.keys(list).length + 1;
+        const totalWaiting = Object.values(list).filter(({ status }) => ['waiting', 'ready', 'processing'].includes(status)).length;
+        const position = totalWaiting + 1;
         const status = position === 1 ? 'ready' : 'waiting';
 
         await this.save(id, {
           status,
           position,
-          updatedAt: Date.now(),
+          updatedAt: new Date(),
         });
 
         return;
@@ -42,12 +54,12 @@ export default function createStore(redis: Redis): QueueStore {
       }
 
       if (['failed', 'finished'].includes(list[id].status) && forced) {
-        await redis.hdel('queue', id);
+        await redis.del(`queue:${id}`);
         await this.join(id);
         return;
       }
 
-      throw new QueueError('Unknow status');
+      throw new QueueError('Unknown status');
     },
 
     async refresh(id) {
@@ -64,7 +76,7 @@ export default function createStore(redis: Redis): QueueStore {
 
       await this.save(id, {
         ...item,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       });
     },
 
@@ -79,12 +91,12 @@ export default function createStore(redis: Redis): QueueStore {
       await this.save(id, {
         ...item,
         status,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       });
     },
 
     async save(id, data) {
-      await redis.hset('queue', id, JSON.stringify(data));
+      await redis.hset(`queue:${id}`, data);
     },
 
     async removeIfExpired(id) {

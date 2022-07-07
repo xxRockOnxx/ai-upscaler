@@ -27,13 +27,26 @@ describe('queue', () => {
   describe('join', () => {
     afterEach(() => connection.flushdb());
 
-    it("should assign ready status if there's no one in the queue", async () => {
+    it('should assign ready status if queue is empty', async () => {
       await queue.join('test-1-id');
 
       const list = await queue.getAll();
 
       expect(Object.keys(list)).toHaveLength(1);
       expect(list['test-1-id']).toHaveProperty('status', 'ready');
+    });
+
+    it("should assign ready status if there's no ongoing", async () => {
+      await queue.join('test-1-id');
+      await queue.markAsStatus('test-1-id', 'finished');
+
+      await queue.join('test-2-id');
+
+      const list = await queue.getAll();
+
+      expect(Object.keys(list)).toHaveLength(2);
+      expect(list['test-2-id']).toHaveProperty('status', 'ready');
+      expect(list['test-2-id']).toHaveProperty('position', 1);
     });
 
     it("should assign waiting status if there's someone in the queue", async () => {
@@ -43,7 +56,12 @@ describe('queue', () => {
       const list = await queue.getAll();
 
       expect(Object.keys(list)).toHaveLength(2);
+
+      expect(list['test-1-id']).toHaveProperty('status', 'ready');
+      expect(list['test-1-id']).toHaveProperty('position', 1);
+
       expect(list['test-2-id']).toHaveProperty('status', 'waiting');
+      expect(list['test-2-id']).toHaveProperty('position', 2);
     });
 
     it('should throw an error if the queue is already in an ongoing state', async () => {
