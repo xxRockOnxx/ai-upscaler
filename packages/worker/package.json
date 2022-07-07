@@ -11,7 +11,7 @@
   },
   "scripts": {
     "start": "npx ts-node -r dotenv/config -T src/main.ts",
-    "lint": "eslint src"
+    "lint": "npx eslint src"
   },
   "dependencies": {
     "@ai-upscaler/core": "^1.0.0",
