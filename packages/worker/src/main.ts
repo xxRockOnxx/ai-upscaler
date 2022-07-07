@@ -136,9 +136,11 @@ function initializeWorker({
 
       scopedEvents.removeAllListeners();
 
-      // Upload enhanced video
+      // Upload enhanced video.
+      // Use `job.data.id` which should be a user's id instead of `job.id`
+      // because we only want to store 1 file per user (at least for now).
       const enhancedFile = await workStorage.get(filenameEnhanced);
-      await downloadStorage.store(job.id, enhancedFile);
+      await downloadStorage.store(job.data.id, enhancedFile);
     },
 
     {
