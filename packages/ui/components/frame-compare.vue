@@ -26,7 +26,7 @@
       >
         <img
           :src="frames[active][0]"
-          class="absolute inset-0 h-full pointer-events-none"
+          class="absolute inset-0 object-contain w-full h-full pointer-events-none"
           alt="Old frame"
         >
         <img
@@ -34,7 +34,7 @@
           :style="{
             clipPath: `polygon(${position}% 0, 100% 0, 100% 100%, ${position}% 100%)`
           }"
-          class="absolute inset-0 h-full pointer-events-none"
+          class="absolute inset-0 object-contain w-full h-full pointer-events-none"
           alt="New frame"
         >
 
