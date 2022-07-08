@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as minio from 'minio';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
+import createJobStore from '@ai-upscaler/core/src/jobs/redis';
 import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
 import createCancel from './channels/cancel';
@@ -80,6 +81,7 @@ async function start() {
   });
 
   const queueStore = createQueueStore(redisDB);
+  const jobStore = createJobStore(redisDB);
   const workDir = path.join(os.tmpdir(), 'ai-upscaler');
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
@@ -88,6 +90,7 @@ async function start() {
 
   createWorker({
     queueStore,
+    jobStore,
 
     createJobEmitter: (job) => scopeEventEmitter(events, job.id),
 
