@@ -7,9 +7,9 @@ import { FrameStorage, Storage } from './storage';
 export interface LocalStorage extends Storage {
   /**
    * Get relative path from Storage's root
-   * @param path - path to be appended from the Storage's root
+   * @param paths - paths to be appended from the Storage's root
    */
-  path(relativePath: string): string
+  path(...paths: string[]): string
 
   readdir(dir: string): Promise<string[]>
 
@@ -40,8 +40,8 @@ export async function createStorage(baseDir: string): Promise<LocalStorage> {
       return fs.promises.rm(baseDir, { recursive: true });
     },
 
-    path(relativePath) {
-      return path.join(baseDir, relativePath);
+    path(...paths: string[]) {
+      return path.join(baseDir, ...paths);
     },
 
     readdir(dir) {

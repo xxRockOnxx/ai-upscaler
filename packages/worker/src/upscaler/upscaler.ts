@@ -5,7 +5,7 @@ import { enhanceFrames } from './enhance';
 import { stitchFrames } from './stitch';
 import { DeferredTask, makeTaskEmitEvents, taskEventToPromise } from './task';
 
-interface UpscalerPaths {
+export interface UpscalerPaths {
   frames(relativePath?: string): string
   enhancedFrames(relativePath?: string): string
 }
