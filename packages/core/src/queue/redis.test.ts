@@ -156,19 +156,40 @@ describe('queue', () => {
 
     it('should remove queue in ongoing status after 1 minute', async () => {
       await queue.save('test-1-id', {
-        status: 'ready',
+        status: 'processing',
         position: 1,
         updatedAt: new Date(Date.now() - (60 * 1000)),
       });
 
       await queue.save('test-2-id', {
-        status: 'waiting',
+        status: 'ready',
         position: 2,
+        updatedAt: new Date(Date.now() - (60 * 1000)),
+      });
+
+      await queue.save('test-3-id', {
+        status: 'waiting',
+        position: 3,
+        updatedAt: new Date(Date.now() - (60 * 1000)),
+      });
+
+      await queue.save('test-4-id', {
+        status: 'waiting',
+        position: 4,
         updatedAt: new Date(),
       });
 
+      await queue.save('test-5-id', {
+        status: 'waiting',
+        position: 5,
+        updatedAt: new Date(Date.now() - (60 * 1000)),
+      });
+
       await expect(queue.removeIfExpired('test-1-id')).resolves.toBe(true);
-      await expect(queue.removeIfExpired('test-2-id')).resolves.toBe(false);
+      await expect(queue.removeIfExpired('test-2-id')).resolves.toBe(true);
+      await expect(queue.removeIfExpired('test-3-id')).resolves.toBe(true);
+      await expect(queue.removeIfExpired('test-4-id')).resolves.toBe(false);
+      await expect(queue.removeIfExpired('test-5-id')).resolves.toBe(true);
     });
 
     it('should remove queue in final state after 1 hour', async () => {
@@ -179,13 +200,27 @@ describe('queue', () => {
       });
 
       await queue.save('test-2-id', {
+        status: 'failed',
+        position: 1,
+        updatedAt: new Date(Date.now() - (1000 * 60 * 60)),
+      });
+
+      await queue.save('test-3-id', {
         status: 'finished',
-        position: 2,
+        position: 1,
+        updatedAt: new Date(),
+      });
+
+      await queue.save('test-4-id', {
+        status: 'failed',
+        position: 1,
         updatedAt: new Date(),
       });
 
       await expect(queue.removeIfExpired('test-1-id')).resolves.toBe(true);
-      await expect(queue.removeIfExpired('test-2-id')).resolves.toBe(false);
+      await expect(queue.removeIfExpired('test-2-id')).resolves.toBe(true);
+      await expect(queue.removeIfExpired('test-3-id')).resolves.toBe(false);
+      await expect(queue.removeIfExpired('test-4-id')).resolves.toBe(false);
     });
 
     it('should not throw an error if the queue item is not found', async () => {
@@ -210,6 +245,15 @@ describe('queue', () => {
         updatedAt: new Date(),
       });
 
+      // Simulate there was position 4 but did not update and was expired.
+      // We save position 5 instead.
+
+      await queue.save('test-5-id', {
+        status: 'waiting',
+        position: 5,
+        updatedAt: new Date(),
+      });
+
       await queue.sort();
 
       const list = await queue.getAll();
@@ -219,6 +263,9 @@ describe('queue', () => {
 
       expect(list['test-3-id'].position).toBe(2);
       expect(list['test-3-id'].status).toBe('waiting');
+
+      expect(list['test-5-id'].position).toBe(3);
+      expect(list['test-5-id'].status).toBe('waiting');
     });
   });
 });
