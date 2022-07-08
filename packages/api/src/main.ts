@@ -144,6 +144,7 @@ async function start() {
     url: '/download',
     preHandler: [createAssertQueue(queue)],
     handler: getDownload({
+      jobs,
       downloads: downloadStorage,
     }),
   });
