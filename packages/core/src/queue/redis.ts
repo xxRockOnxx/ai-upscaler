@@ -121,7 +121,7 @@ export default function createStore(redis: Redis): QueueStore {
         'processing',
       ];
 
-      if (ongoingStatus.includes(item.status) && item.updatedAt < expiryOngoing) {
+      if (ongoingStatus.includes(item.status) && item.updatedAt <= expiryOngoing) {
         await redis.hdel('queue', id);
         return true;
       }
@@ -133,7 +133,7 @@ export default function createStore(redis: Redis): QueueStore {
         'finished',
       ];
 
-      if (finalStatus.includes(item.status) && item.updatedAt < expiryFinal) {
+      if (finalStatus.includes(item.status) && item.updatedAt <= expiryFinal) {
         await redis.hdel('queue', id);
         return true;
       }
