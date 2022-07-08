@@ -141,7 +141,7 @@ export default function createStore(redis: Redis): QueueStore {
       return false;
     },
 
-    async sort() {
+    async sortWaiting() {
       const list = await this.getAll();
 
       await Object.keys(list)

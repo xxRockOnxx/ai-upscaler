@@ -94,7 +94,7 @@ export function createWorker({
 
       queueStore
         .markAsStatus(job.data.id, 'finished')
-        .then(() => queueStore.sort());
+        .then(() => queueStore.sortWaiting());
 
       cleanupJob(job);
     })
@@ -107,7 +107,7 @@ export function createWorker({
 
       queueStore
         .markAsStatus(job.data.id, 'failed')
-        .then(() => queueStore.sort());
+        .then(() => queueStore.sortWaiting());
 
       cleanupJob(job);
     });

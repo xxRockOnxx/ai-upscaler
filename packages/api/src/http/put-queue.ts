@@ -33,7 +33,7 @@ export default function createPutQueue(queue: QueueStore): RouteHandler {
         .removeIfExpired(id)
         .then((removed) => {
           if (removed) {
-            queue.sort();
+            queue.sortWaiting();
           }
         });
     }, 1000 * 60);

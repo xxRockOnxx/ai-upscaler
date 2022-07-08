@@ -228,7 +228,7 @@ describe('queue', () => {
     });
   });
 
-  describe('sort', () => {
+  describe('sortWaiting', () => {
     afterEach(() => connection.flushdb());
 
     it('should sort the queue items by position', async () => {
@@ -254,7 +254,7 @@ describe('queue', () => {
         updatedAt: new Date(),
       });
 
-      await queue.sort();
+      await queue.sortWaiting();
 
       const list = await queue.getAll();
 

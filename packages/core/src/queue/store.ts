@@ -11,7 +11,7 @@ export interface QueueStore {
   markAsStatus(id: string, status: Queue['status']): Promise<void>
   save(id: string, data: Queue): Promise<void>
   removeIfExpired(id: string): Promise<boolean>
-  sort(): Promise<void>
+  sortWaiting(): Promise<void>
 }
 
 export class QueueError extends Error {
