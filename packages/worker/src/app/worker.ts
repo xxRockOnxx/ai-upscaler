@@ -1,11 +1,13 @@
 import fs from 'fs';
 import { Readable } from 'stream';
 import { Job, Worker, WorkerOptions } from 'bullmq';
+import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
-import { createUpscaleProcessor, CreateUpscaleProcessorOptions } from '../worker/processor';
+import { createUpscaleProcessor, CreateUpscaleProcessorOptions, UpscaleJob } from '../worker/processor';
 
 export interface WorkerFactoryOptions extends CreateUpscaleProcessorOptions {
   queueStore: QueueStore
+  jobStore: JobStore
   options: WorkerOptions
 
   uploadFrame: (jobId: string, frame: string, stream: Readable) => Promise<void>
@@ -14,6 +16,7 @@ export interface WorkerFactoryOptions extends CreateUpscaleProcessorOptions {
 
 export function createWorker({
   queueStore,
+  jobStore,
   options,
 
   uploadFrame,
@@ -68,7 +71,9 @@ export function createWorker({
     options,
   );
 
-  function cleanupJob(job: Job) {
+  function cleanupJob(job: UpscaleJob) {
+    jobStore.delete(job.data.id);
+
     createJobEmitter(job).removeAllListeners();
 
     // It should exist.

@@ -22,12 +22,14 @@ export interface CreateUpscaleProcessorOptions {
   createJobEmitter: (job: Job) => EventEmitter
 }
 
-export interface UpscaleJob {
+export interface UpscalePayload {
   id: string
   input: string
 }
 
-export type UpscaleProcessor = Processor<UpscaleJob, void, 'upscale'>;
+export type UpscaleProcessor = Processor<UpscalePayload, void, 'upscale'>;
+
+export type UpscaleJob = Parameters<UpscaleProcessor>[0]
 
 export function createUpscaleProcessor({
   createJobStorage,
