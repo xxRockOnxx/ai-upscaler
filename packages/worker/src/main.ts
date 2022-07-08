@@ -93,7 +93,8 @@ async function start() {
 
     async createJobStorage(job) {
       const jobStorage = await createLocalStorage(path.join(workDir, job.id));
-      const enhancedVideoPath = jobStorage.path(uuid());
+      const filename = uuid();
+      const enhancedVideoPath = jobStorage.path(filename);
 
       return {
         getRawVideoPath: () => jobStorage.path(job.data.input),
@@ -105,7 +106,7 @@ async function start() {
         downloadRawVideo: async () => jobStorage.store(job.data.input, await uploadStorage.get(job.data.input)),
 
         // eslint-disable-next-line max-len
-        uploadEnhancedVideo: async () => downloadStorage.store(job.id, await jobStorage.get(enhancedVideoPath)),
+        uploadEnhancedVideo: async () => downloadStorage.store(job.id, await jobStorage.get(filename)),
 
         destroy: jobStorage.destroy,
       };
