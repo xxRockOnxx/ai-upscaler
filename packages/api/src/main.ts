@@ -173,6 +173,8 @@ async function start() {
     }),
   });
 
+  queue.removeExpired();
+
   await server.listen(3000, '0.0.0.0');
 }
 

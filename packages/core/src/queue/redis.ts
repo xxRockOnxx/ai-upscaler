@@ -1,5 +1,34 @@
 import Redis from 'ioredis';
-import { QueueError, QueueStore } from './store';
+import { Queue, QueueError, QueueStore } from './store';
+
+function shouldBeRemoved(item: Queue) {
+  // Fixed time for now.
+  const expiryOngoing = new Date(Date.now() - 1000 * 60);
+  const expiryFinal = new Date(Date.now() - 1000 * 60 * 60);
+
+  const ongoingStatus = [
+    'waiting',
+    'ready',
+    'processing',
+  ];
+
+  if (ongoingStatus.includes(item.status) && item.updatedAt <= expiryOngoing) {
+    return true;
+  }
+
+  // Make final status available for a longer time
+  // to allow users to see about the status.
+  const finalStatus = [
+    'failed',
+    'finished',
+  ];
+
+  if (finalStatus.includes(item.status) && item.updatedAt <= expiryFinal) {
+    return true;
+  }
+
+  return false;
+}
 
 export default function createStore(redis: Redis): QueueStore {
   return {
@@ -99,6 +128,16 @@ export default function createStore(redis: Redis): QueueStore {
       await redis.hset(`queue:${id}`, data);
     },
 
+    async removeExpired() {
+      const list: Queue[] = await this.getAll();
+
+      const promise = Object.keys(list)
+        .filter((id) => shouldBeRemoved(list[id]))
+        .map((id) => redis.del(`queue:${id}`));
+
+      await promise;
+    },
+
     async removeIfExpired(id) {
       const list = await this.getAll();
 
@@ -111,30 +150,8 @@ export default function createStore(redis: Redis): QueueStore {
 
       const item = list[id];
 
-      // Fixed time for now.
-      const expiryOngoing = new Date(Date.now() - 1000 * 60);
-      const expiryFinal = new Date(Date.now() - 1000 * 60 * 60);
-
-      const ongoingStatus = [
-        'waiting',
-        'ready',
-        'processing',
-      ];
-
-      if (ongoingStatus.includes(item.status) && item.updatedAt <= expiryOngoing) {
-        await redis.hdel('queue', id);
-        return true;
-      }
-
-      // Make final status available for a longer time
-      // to allow users to see about the status.
-      const finalStatus = [
-        'failed',
-        'finished',
-      ];
-
-      if (finalStatus.includes(item.status) && item.updatedAt <= expiryFinal) {
-        await redis.hdel('queue', id);
+      if (shouldBeRemoved(item)) {
+        await redis.del(`queue:${id}`);
         return true;
       }
 

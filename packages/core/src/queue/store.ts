@@ -10,6 +10,7 @@ export interface QueueStore {
   refresh(id: string): Promise<void>
   markAsStatus(id: string, status: Queue['status']): Promise<void>
   save(id: string, data: Queue): Promise<void>
+  removeExpired(): Promise<void>
   removeIfExpired(id: string): Promise<boolean>
   sortWaiting(): Promise<void>
 }

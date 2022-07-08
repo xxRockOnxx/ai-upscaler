@@ -151,6 +151,48 @@ describe('queue', () => {
     });
   });
 
+  describe('removeExpired', () => {
+    it('should remove expired items', async () => {
+      await queue.save('test-1-id', {
+        status: 'finished',
+        position: 1,
+        updatedAt: new Date(Date.now() - (1000 * 60 * 60)),
+      });
+
+      await queue.save('test-2-id', {
+        status: 'processing',
+        position: 1,
+        updatedAt: new Date(Date.now() - (60 * 1000)),
+      });
+
+      await queue.save('test-3-id', {
+        status: 'waiting',
+        position: 2,
+        updatedAt: new Date(),
+      });
+
+      await queue.save('test-4-id', {
+        status: 'waiting',
+        position: 3,
+        updatedAt: new Date(Date.now() - (60 * 1000)),
+      });
+
+      await queue.save('test-5-id', {
+        status: 'waiting',
+        position: 4,
+        updatedAt: new Date(),
+      });
+
+      await queue.removeExpired();
+
+      const list = await queue.getAll();
+
+      expect(Object.keys(list)).toHaveLength(2);
+      expect(list).toHaveProperty('test-3-id');
+      expect(list).toHaveProperty('test-5-id');
+    });
+  });
+
   describe('removeIfExpired', () => {
     afterEach(() => connection.flushdb());
 
