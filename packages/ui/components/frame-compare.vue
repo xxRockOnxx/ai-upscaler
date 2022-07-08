@@ -26,7 +26,7 @@
       >
         <img
           :src="frames[active][0]"
-          class="absolute inset-0 object-contain w-full h-full pointer-events-none"
+          class="absolute inset-0 object-contain w-full h-full bg-white pointer-events-none"
           alt="Old frame"
         >
         <img
@@ -34,7 +34,7 @@
           :style="{
             clipPath: `polygon(${position}% 0, 100% 0, 100% 100%, ${position}% 100%)`
           }"
-          class="absolute inset-0 object-contain w-full h-full pointer-events-none"
+          class="absolute inset-0 object-contain w-full h-full bg-white pointer-events-none"
           alt="New frame"
         >
 
@@ -44,6 +44,7 @@
             left: `${position}%`
           }"
         >
+          <div class="w-px h-full bg-white mix-blend-difference" />
           <button
             type="button"
             class="absolute w-4 h-4 bg-white border rounded-full shadow-xl"
@@ -53,7 +54,6 @@
             }"
             @mousedown="tracking = true"
           />
-          <div class="w-px h-full bg-white" />
         </div>
       </template>
 
