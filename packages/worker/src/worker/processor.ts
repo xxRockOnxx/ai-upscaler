@@ -51,18 +51,30 @@ export function createUpscaleProcessor({
       .on('enhance:progress', (progress) => updateTaskProgress('enhance', progress))
       .on('stitch:progress', (progress) => updateTaskProgress('stitch', progress));
 
-    await jobStorage.downloadRawVideo();
+    try {
+      await jobStorage.downloadRawVideo();
+    } catch (e) {
+      throw new Error('Failed to download raw video', { cause: e });
+    }
 
-    await upscale({
-      emitter,
-      input: jobStorage.getRawVideoPath(),
-      output: jobStorage.getEnhancedVideoPath(),
-      paths: {
-        frames: jobStorage.getRawFramePath,
-        enhancedFrames: jobStorage.getEnhancedFramePath,
-      },
-    });
+    try {
+      await upscale({
+        emitter,
+        input: jobStorage.getRawVideoPath(),
+        output: jobStorage.getEnhancedVideoPath(),
+        paths: {
+          frames: jobStorage.getRawFramePath,
+          enhancedFrames: jobStorage.getEnhancedFramePath,
+        },
+      });
+    } catch (e) {
+      throw new Error('Failed to upscale video', { cause: e });
+    }
 
-    await jobStorage.uploadEnhancedVideo();
+    try {
+      await jobStorage.uploadEnhancedVideo();
+    } catch (e) {
+      throw new Error('Failed to upload enhanced video', { cause: e });
+    }
   };
 }
