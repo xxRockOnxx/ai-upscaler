@@ -105,6 +105,11 @@ export default {
           this.total = 0
         }
       })
+      .catch((e) => {
+        this.status = 'unavailable'
+        this.total = 0
+        throw e
+      })
   },
 
   methods: {
