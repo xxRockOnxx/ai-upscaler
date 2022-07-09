@@ -46,6 +46,8 @@ Set the absolute path of the binary to `REAL_ESRGAN_PATH` environment variable.
 
 ## Run Locally
 
+### Installation
+
 Clone the project
 
 ```bash
@@ -67,7 +69,19 @@ Install dependencies
 
 Set the required environment variables or simply just rename `.env.example` inside the packages to `.env`. See [Environment Variables](#environment-variables).
 
-Start the apps:
+### Run the services
+
+If you don't want to install the following services natively, run the following command to get the services up via Docker:
+
+```bash
+  docker-compose up -d redis minio
+```
+
+After starting minio, visit `http://localhost:9001` and login using `user:password`.
+
+Create the required buckets: `uploads`, `downloads`, and `frames`.
+
+### Run the apps
 
 API:
 
