@@ -2,13 +2,8 @@ import { EventEmitter } from 'events';
 
 export type ScopedEvent<Scope extends string, Event extends string> = `${Scope}:${Event}`;
 
-export interface ScopedEventEmitter<Scope extends string> extends EventEmitter {
-  // eslint-disable-next-line max-len
-  on<Event extends string>(event: ScopedEvent<Scope, Event>, listener: (...args: any[]) => void): this;
-}
-
 // eslint-disable-next-line max-len
-export function scopeEventEmitter<S extends string>(events: EventEmitter, scope: S): ScopedEventEmitter<S> {
+export function scopeEventEmitter<S extends string>(events: EventEmitter, scope: S): EventEmitter {
   return {
     eventNames: () => events.eventNames()
       .filter((name) => typeof name === 'string' && name.startsWith(`${scope}:`))

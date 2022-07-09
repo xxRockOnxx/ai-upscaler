@@ -30,8 +30,6 @@ describe('events.ts', () => {
   it('should return scoped events only', () => {
     const scoped = scopeEventEmitter(eventEmitter, 'user-1');
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     scoped.on('closed', () => undefined);
     eventEmitter.on('closed', () => undefined);
 

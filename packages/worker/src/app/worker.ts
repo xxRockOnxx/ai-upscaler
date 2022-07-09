@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { Readable } from 'stream';
-import { Job, Worker, WorkerOptions } from 'bullmq';
+import { Worker, WorkerOptions } from 'bullmq';
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { createUpscaleProcessor, CreateUpscaleProcessorOptions, UpscaleJob } from '../worker/processor';

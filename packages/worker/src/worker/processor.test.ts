@@ -16,7 +16,7 @@ describe('processor.ts', () => {
     processor = createUpscaleProcessor({
       // We don't need an implementation for this because
       // we will mock the actual upscaling.
-      createJobStorage: (job) => Promise.resolve({
+      createJobStorage: () => Promise.resolve({
         getRawVideoPath: () => '',
         getRawFramePath: (frame) => frame,
         getEnhancedFramePath: (frame) => frame,
@@ -39,6 +39,7 @@ describe('processor.ts', () => {
       updateProgress: jest.fn().mockResolvedValue(undefined),
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     processor(job as any);
 
     // Wait for whatever needs to happen inside processor.

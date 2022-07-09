@@ -1,4 +1,5 @@
-import { ScopedEvent, ScopedEventEmitter } from '../events';
+import type { EventEmitter } from 'events';
+import { ScopedEvent } from '../events';
 
 export interface TaskOption<T, R> {
   data: T
@@ -15,7 +16,7 @@ export interface DeferredTask<N, T, R = void> {
   callback: Task<T, R>
 }
 
-export interface TaskEventEmitter<T extends string, R = any> extends ScopedEventEmitter<T> {
+export interface TaskEventEmitter<T extends string, R = any> extends EventEmitter {
   on(event: ScopedEvent<T, 'cancel'>, listener: () => void): this;
   on(event: ScopedEvent<T, 'cancelled'>, listener: (error: Error) => void): this;
   on(event: ScopedEvent<T, 'error'>, listener: (error: Error) => void): this;
