@@ -4,7 +4,8 @@
     "lib": ["ES2021"],
     "module": "Node16",
     "outDir": "../../dist/worker",
-    "composite": true
+    "composite": true,
+    "noImplicitThis": true,
   },
   "include": [
     "src/"

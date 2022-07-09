@@ -4,6 +4,7 @@
     "lib": ["ES2021"],
     "module": "Node16",
     "outDir": "../../dist/core",
-    "composite": true
+    "composite": true,
+    "noImplicitThis": true,
   }
 }
