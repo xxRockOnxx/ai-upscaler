@@ -12,6 +12,7 @@ export interface WorkerFactoryOptions extends CreateUpscaleProcessorOptions {
 
   uploadFrame: (jobId: string, frame: string, stream: Readable) => Promise<void>
   uploadEnhancedFrame: (jobId: string, frame: string, stream: Readable) => Promise<void>
+  deleteFrames: (jobId: string) => Promise<void>
 }
 
 export function createWorker({
@@ -21,6 +22,7 @@ export function createWorker({
 
   uploadFrame,
   uploadEnhancedFrame,
+  deleteFrames,
 
   createJobStorage,
   createJobEmitter,
@@ -75,6 +77,8 @@ export function createWorker({
     jobStore.delete(job.data.id);
 
     createJobEmitter(job).removeAllListeners();
+
+    deleteFrames(job.id);
 
     // It should exist.
     // If it doesn't it should be a bug.

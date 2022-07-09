@@ -117,6 +117,7 @@ async function start() {
 
     uploadFrame: (jobId, frame, file) => frameStorage.store(path.join(jobId, 'raw', frame), file),
     uploadEnhancedFrame: (jobId, frame, file) => frameStorage.store(path.join(jobId, 'enhanced', frame), file),
+    deleteFrames: (jobId) => frameStorage.delete(jobId),
 
     options: {
       connection: redisDB,
