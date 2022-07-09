@@ -30,10 +30,17 @@ function shouldBeRemoved(item: Queue) {
   return false;
 }
 
+function parseResponse(response: Record<string, string>): Queue {
+  return {
+    status: response.status as Queue['status'],
+    position: parseInt(response.position, 10),
+    updatedAt: new Date(response.updatedAt),
+  };
+}
+
 export default function createStore(redis: Redis): QueueStore {
   return {
     async getAll() {
-      redis.pipeline();
       const keys = await redis.keys('queue:*');
 
       const parsed = {};
@@ -46,15 +53,22 @@ export default function createStore(redis: Redis): QueueStore {
           }
 
           const actualKey = key.replace('queue:', '');
-          parsed[actualKey] = result;
-          parsed[actualKey].position = parseInt(result.position, 10);
-          parsed[actualKey].updatedAt = new Date(result.updatedAt);
+          parsed[actualKey] = parseResponse(result);
         });
       });
 
       await pipeline.exec();
 
       return parsed;
+    },
+
+    get(id) {
+      return redis.hgetall(`queue:${id}`).then(parseResponse);
+    },
+
+    async waitingCount() {
+      const list = await this.getAll();
+      return Object.values(list).filter(({ status }) => !['finished', 'failed'].includes(status)).length;
     },
 
     async join(id, forced = false) {
@@ -129,7 +143,7 @@ export default function createStore(redis: Redis): QueueStore {
     },
 
     async removeExpired() {
-      const list: Queue[] = await this.getAll();
+      const list = await this.getAll();
 
       const promise = Object.keys(list)
         .filter((id) => shouldBeRemoved(list[id]))

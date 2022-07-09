@@ -6,6 +6,8 @@ export interface Queue {
 
 export interface QueueStore {
   getAll(): Promise<Record<string, Queue>>
+  get(id: string): Promise<Queue | undefined>
+  waitingCount(): Promise<number>
   join(id: string, forced?: boolean): Promise<void>
   refresh(id: string): Promise<void>
   markAsStatus(id: string, status: Queue['status']): Promise<void>

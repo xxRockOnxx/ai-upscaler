@@ -1,39 +1,46 @@
-import { QueueStore } from '@ai-upscaler/core/src/queue/store';
-import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { Queue } from 'bullmq';
-import { RouteHandler } from 'fastify';
+import { RouteHandler as BaseRouteHandler } from 'fastify';
+
+type RouteHandler = BaseRouteHandler<{
+  Params: {
+    job: string
+  }
+}>
 
 interface GetProgressOptions {
-  queue: QueueStore
-  jobs: JobStore
   bull: Queue
 }
 
-export default function createGetProgress({ queue, jobs, bull }: GetProgressOptions): RouteHandler {
+export default function createGetProgress({ bull }: GetProgressOptions): RouteHandler {
   return async function getProgress(request, reply) {
-    const queueList = await queue.getAll();
-    const queueItem = queueList[request.cookies.queue];
+    const jobId = request.params.job;
 
-    if (!['processing', 'finished'].includes(queueItem.status)) {
+    if (!jobId) {
       return reply
-        .status(404)
+        .code(400)
         .send({
-          status: 'No data',
+          message: 'Missing job id',
         });
     }
 
-    const job = await jobs.get(request.cookies.queue);
+    const job = await bull.getJob(jobId);
 
     if (!job) {
       return reply
-        .status(404)
+        .code(404)
         .send({
-          status: 'No data',
+          message: 'Job not found',
         });
     }
 
-    const jobData = await bull.getJob(job);
+    if (job.data.id !== request.cookies.queue) {
+      return reply
+        .code(401)
+        .send({
+          message: 'Job does not belong to this queue',
+        });
+    }
 
-    return reply.send(jobData.progress);
+    return reply.send(job.progress);
   };
 }

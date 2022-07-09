@@ -131,12 +131,12 @@ export default {
           forced: true
         }),
         refreshQueue: () => this.$axios.$put('/api/queue'),
-        getProgress: () => this.$axios.$get('/api/progress'),
+        getProgress: jobId => this.$axios.$get(`/api/jobs/${jobId}/progress`),
         getFrames: () => this.$axios.$get('/api/frames').then(({ frames }) => frames),
         upload: (file) => {
           const formData = new FormData()
           formData.append('file', file)
-          return this.$axios.post('/api/submit', formData)
+          return this.$axios.$post('/api/submit', formData)
         },
         cancel: () => this.$axios.$put('/api/cancel')
       })

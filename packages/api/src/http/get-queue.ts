@@ -1,3 +1,4 @@
+import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { RouteHandler } from 'fastify';
 
@@ -6,23 +7,22 @@ const inactiveStatus = [
   'failed',
 ];
 
-export default function createGetQueue(queue: QueueStore): RouteHandler {
+interface GetQueueOptions {
+  queue: QueueStore
+  jobs: JobStore
+}
+
+export default function createGetQueue({
+  queue,
+  jobs,
+}: GetQueueOptions): RouteHandler {
   return async function getQueue(request, reply) {
-    const queueList = await queue.getAll();
-
-    let total = 0;
-
-    // Count total without "inactive" queue items.
-    Object.values(queueList).forEach((item) => {
-      if (inactiveStatus.includes(item.status)) {
-        return;
-      }
-
-      total += 1;
-    });
+    const id = request.cookies.queue;
+    const total = await queue.waitingCount();
+    const queueDetails = await queue.get(id);
 
     // No cookie or invalid queue id means "idle"
-    if (!request.cookies.queue || !queueList[request.cookies.queue]) {
+    if (!id || !queueDetails) {
       return reply.send({
         total,
         position: null,
@@ -30,12 +30,11 @@ export default function createGetQueue(queue: QueueStore): RouteHandler {
       });
     }
 
-    const item = queueList[request.cookies.queue];
-
     return reply.send({
       total,
-      position: inactiveStatus.includes(item.status) ? null : item.position,
-      status: item.status,
+      position: inactiveStatus.includes(queueDetails.status) ? null : queueDetails.position,
+      status: queueDetails.status,
+      job: await jobs.get(id) ?? null,
     });
   };
 }

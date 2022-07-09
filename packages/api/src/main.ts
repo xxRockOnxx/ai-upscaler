@@ -55,10 +55,12 @@ async function start() {
     useSSL: process.env.MINIO_USE_SSL === 'true',
   });
 
+  // Store / DB
   const queue = createQueueStore(redisDB);
   const jobs = createJobsStore(redisDB);
   const downloads = createDownloadStore(redisDB);
 
+  // Storages
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
   const tmpStorage = await createLocalStorage(path.join(os.tmpdir(), 'ai-upscaler'));
@@ -69,99 +71,10 @@ async function start() {
 
   const server = await createServer();
 
-  server.get('/queue', getQueue(queue));
-
-  server.get('/availability', getAvailability({
-    queue: upscaleQueue,
-  }));
-
-  server.route({
-    method: 'PUT',
-    url: '/queue',
-    handler: putQueue(queue),
-    schema: {
-      body: {
-        type: ['object', 'null'],
-        properties: {
-          forced: {
-            type: 'boolean',
-            default: false,
-          },
-        },
-      },
-    },
-  });
-
-  server.route({
-    method: 'GET',
-    url: '/progress',
-    preHandler: [createAssertQueue(queue)],
-    handler: getProgress({
-      bull: upscaleQueue,
-      queue,
-      jobs,
-    }),
-  });
-
-  server.route({
-    method: 'GET',
-    url: '/frames',
-    preHandler: [
-      createAssertQueue(queue),
-      createAssertJob(jobs),
-    ],
-    handler: getFrames({
-      async getFramesProcessed(id) {
-        const jobId = await jobs.get(id);
-        let count = 0;
-
-        return new Promise((resolve, reject) => {
-          minioClient
-            .listObjects('frames', `${jobId}/enhanced`, true)
-            .on('data', (data) => {
-              count += 1;
-            })
-            .once('end', () => resolve(count))
-            .once('error', reject);
-        });
-      },
-    }),
-  });
-
-  server.route({
-    method: 'GET',
-    url: '/frames/:frame',
-    preHandler: [
-      createAssertQueue(queue),
-      createAssertJob(jobs),
-    ],
-    handler: getFrame({
-      async getFrameStream(id, frame, enhanced) {
-        const jobId = await jobs.get(id);
-        const directory = enhanced ? 'enhanced' : 'raw';
-        return minioClient
-          .getObject('frames', `${jobId}/${directory}/frame_${frame}.png`)
-          .catch((e) => {
-            if (e.code === 'NoSuchKey') {
-              return undefined;
-            }
-            throw e;
-          });
-      },
-    }),
-  });
-
-  server.route({
-    method: 'GET',
-    url: '/download',
-    preHandler: [createAssertQueue(queue)],
-    handler: getDownload({
-      async getDownloadFile(id) {
-        const downloadId = await downloads.get(id);
-        return downloadStorage.get(downloadId);
-      },
-    }),
-  });
+  server
+    .get('/availability', getAvailability({ queue: upscaleQueue }))
+    .get('/queue', getQueue({ queue, jobs }))
+    .put('/queue', putQueue(queue));
 
   server.route({
     method: 'POST',
@@ -176,16 +89,102 @@ async function start() {
     }),
   });
 
+  // We allow fetching of progress by a specific job
+  // instead of automatically getting the current job
+  // like the other routes because when a job is completed,
+  // the user's current job will be cleared from the store.
+  // The UI won't be able to see the finished progress because of this.
   server.route({
-    method: 'PUT',
-    url: '/cancel',
+    method: 'GET',
+    url: '/jobs/:job/progress',
     preHandler: [createAssertQueue(queue)],
-    handler: putCancel({
-      publish: redisDB,
-      jobs,
-      queue,
+    handler: getProgress({
+      bull: upscaleQueue,
     }),
   });
+
+  server.route({
+    method: 'GET',
+    url: '/download',
+    preHandler: [createAssertQueue(queue)],
+    handler: getDownload({
+      async getDownloadFile(id) {
+        const jobId = await jobs.get(id);
+
+        // No current job is being processed.
+        // Return the last saved file.
+        if (!jobId) {
+          const downloadId = await downloads.get(id);
+          return downloadStorage.get(downloadId);
+        }
+
+        // We only allow 1 file to be saved for each user/queue/cookie.
+        return undefined;
+      },
+    }),
+  });
+
+  // Routes that are related to the current job of this request/user/queue
+  server
+    .route({
+      method: 'GET',
+      url: '/frames',
+      preHandler: [
+        createAssertQueue(queue),
+        createAssertJob(jobs),
+      ],
+      handler: getFrames({
+        async getFramesProcessed(id) {
+          const jobId = await jobs.get(id);
+          let count = 0;
+
+          return new Promise((resolve, reject) => {
+            minioClient
+              .listObjects('frames', `${jobId}/enhanced`, true)
+              .on('data', () => {
+                count += 1;
+              })
+              .once('end', () => resolve(count))
+              .once('error', reject);
+          });
+        },
+      }),
+    })
+    .route({
+      method: 'GET',
+      url: '/frames/:frame',
+      preHandler: [
+        createAssertQueue(queue),
+        createAssertJob(jobs),
+      ],
+      handler: getFrame({
+        async getFrameStream(id, frame, enhanced) {
+          const jobId = await jobs.get(id);
+          const directory = enhanced ? 'enhanced' : 'raw';
+          return minioClient
+            .getObject('frames', `${jobId}/${directory}/frame_${frame}.png`)
+            .catch((e) => {
+              if (e.code === 'NoSuchKey') {
+                return undefined;
+              }
+              throw e;
+            });
+        },
+      }),
+    })
+    .route({
+      method: 'PUT',
+      url: '/cancel',
+      preHandler: [
+        createAssertQueue(queue),
+        createAssertJob(jobs),
+      ],
+      handler: putCancel({
+        publish: redisDB,
+        jobs,
+        queue,
+      }),
+    });
 
   queue.removeExpired();
 

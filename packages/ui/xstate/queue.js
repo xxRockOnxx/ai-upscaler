@@ -24,6 +24,8 @@ export default function createQueueMachine ({
       progressMachine: null,
       framesMachine: null,
 
+      jobId: null,
+
       progress: {
         extract: 0,
         enhance: 0,
@@ -190,16 +192,23 @@ export default function createQueueMachine ({
             invoke: {
               id: 'upload',
               src: ({ file }) => upload(file),
-              onDone: 'processing',
-              onError: '#queue.error'
+              onDone: {
+                target: 'processing',
+                actions: assign({
+                  jobId: (_, event) => event.data.job
+                })
+              },
+              onError: {
+                target: '#queue.error'
+              }
             }
           },
 
           processing: {
             entry: assign({
-              progressMachine: () => spawn(createPollMachine({
+              progressMachine: ctx => spawn(createPollMachine({
                 timeout: 2000,
-                callback: getProgress,
+                callback: () => getProgress(ctx.jobId),
                 onDone: sendParent((_, evt) => ({
                   type: 'UPDATE_PROGRESS',
                   progress: evt.data

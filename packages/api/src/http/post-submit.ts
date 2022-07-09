@@ -138,8 +138,10 @@ export default function createPostSubmit({
         jobs.save(id, job.id);
 
         return reply
-          .code(204)
-          .send();
+          .code(201)
+          .send({
+            job: job.id,
+          });
       })
       .catch((e) => {
         request.log.error('Failed to add job to queue');
