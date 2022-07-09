@@ -6,6 +6,7 @@ import * as minio from 'minio';
 import { EventEmitter } from 'events';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import createJobStore from '@ai-upscaler/core/src/jobs/redis';
+import createDownloadStore from '@ai-upscaler/core/src/downloads/redis';
 import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
 import createCancel from './channels/cancel';
@@ -82,10 +83,13 @@ async function start() {
 
   const queueStore = createQueueStore(redisDB);
   const jobStore = createJobStore(redisDB);
+  const downloadStore = createDownloadStore(redisDB);
+
   const workDir = path.join(os.tmpdir(), 'ai-upscaler');
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
   const frameStorage = createMinioStorage(minioClient, 'frames');
+
   const events = new EventEmitter();
 
   createWorker({
@@ -109,7 +113,12 @@ async function start() {
         downloadRawVideo: async () => jobStorage.store(job.data.input, await uploadStorage.get(job.data.input)),
 
         // eslint-disable-next-line max-len
-        uploadEnhancedVideo: async () => downloadStorage.store(job.id, await jobStorage.get(filename)),
+        uploadEnhancedVideo: async () => {
+          await Promise.all([
+            downloadStorage.store(job.id, await jobStorage.get(filename)),
+            downloadStore.save(job.data.id, job.id),
+          ]);
+        },
 
         destroy: jobStorage.destroy,
       };

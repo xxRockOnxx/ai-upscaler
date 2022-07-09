@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import createJobsStore from '@ai-upscaler/core/src/jobs/redis';
+import createDownloadStore from '@ai-upscaler/core/src/downloads/redis';
 import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
 import { createAssertQueue } from './http/prehandlers/assert-queue';
@@ -56,6 +57,7 @@ async function start() {
 
   const queue = createQueueStore(redisDB);
   const jobs = createJobsStore(redisDB);
+  const downloads = createDownloadStore(redisDB);
 
   const uploadStorage = createMinioStorage(minioClient, 'uploads');
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
@@ -154,8 +156,10 @@ async function start() {
     url: '/download',
     preHandler: [createAssertQueue(queue)],
     handler: getDownload({
-      jobs,
-      downloads: downloadStorage,
+      async getDownloadFile(id) {
+        const downloadId = await downloads.get(id);
+        return downloadStorage.get(downloadId);
+      },
     }),
   });
 

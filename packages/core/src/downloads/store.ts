@@ -4,8 +4,7 @@ export interface Download {
 }
 
 export interface DownloadStore {
-  getAll(): Promise<Record<string, Download>>
-  getById(id: string): Promise<Download | null>
-  set<T extends keyof Download>(id: string, key: T, value: Download[T]): Promise<void>
-  save(id: string, data: Download): Promise<void>
+  get(id: string): Promise<string | undefined>
+  save(id: string, file: string): Promise<void>
+  delete(id: string): Promise<void>
 }
