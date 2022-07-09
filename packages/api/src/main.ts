@@ -74,7 +74,14 @@ async function start() {
   server
     .get('/availability', getAvailability({ queue: upscaleQueue }))
     .get('/queue', getQueue({ queue, jobs }))
-    .put('/queue', putQueue(queue));
+    .put('/queue', putQueue({
+      queue,
+      cancelJob: (id) => {
+        jobs
+          .get(id)
+          .then((job) => redisDB.publish('cancel', JSON.stringify({ id: job })));
+      },
+    }));
 
   server.route({
     method: 'POST',
