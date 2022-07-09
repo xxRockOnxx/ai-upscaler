@@ -16,7 +16,7 @@ interface UpscaleOption {
   paths: UpscalerPaths
 }
 
-export const FRAME_NAME = 'frame_%03d.png';
+export const FRAME_NAME = 'frame_%d.png';
 
 export async function upscale({
   input,

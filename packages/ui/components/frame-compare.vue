@@ -3,15 +3,15 @@
     <div class="h-24 overflow-x-auto">
       <div class="flex h-full gap-4 flex-nowrap">
         <button
-          v-for="(frame, index) in frames"
-          :key="index"
+          v-for="(frame) in total"
+          :key="frame"
           type="button"
           class="h-full aspect-video"
-          @click="active = index"
+          @click="active = frame"
         >
           <img
-            :src="frame[0]"
-            :alt="`Frame #${index + 1}`"
+            :src="`/api/frames/${frame}`"
+            :alt="`Frame #${frame}`"
           >
         </button>
       </div>
@@ -22,15 +22,16 @@
       class="relative w-full border-t aspect-video"
     >
       <template
-        v-if="frames[active]"
+        v-if="active !== null"
       >
         <img
-          :src="frames[active][0]"
+          :src="`/api/frames/${active}`"
           class="absolute inset-0 object-contain w-full h-full bg-white pointer-events-none"
           alt="Old frame"
         >
+
         <img
-          :src="frames[active][1]"
+          :src="`/api/frames/${active}?enhanced=true`"
           :style="{
             clipPath: `polygon(${position}% 0, 100% 0, 100% 100%, ${position}% 100%)`
           }"
@@ -61,7 +62,7 @@
         v-else
         class="flex items-center justify-center h-full"
       >
-        <span v-if="frames.length === 0">No frames</span>
+        <span v-if="total === 0">No frames available</span>
         <span v-else-if="active === null">Select a frame to compare</span>
       </div>
     </div>
@@ -71,9 +72,9 @@
 <script>
 export default {
   props: {
-    frames: {
-      type: Array,
-      default: () => []
+    total: {
+      type: Number,
+      default: 0
     }
   },
 

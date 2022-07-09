@@ -30,7 +30,7 @@ export default function createQueueMachine ({
         stitch: 0
       },
 
-      frames: []
+      frames: 0
     },
 
     invoke: {

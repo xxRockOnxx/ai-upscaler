@@ -1,14 +1,14 @@
 import Redis from 'ioredis';
 import { Queue } from 'bullmq';
-import { preHandlerAsyncHookHandler } from 'fastify';
 import * as minio from 'minio';
 import * as os from 'os';
 import * as path from 'path';
 import createQueueStore from '@ai-upscaler/core/src/queue/redis';
 import createJobsStore from '@ai-upscaler/core/src/jobs/redis';
-import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
-import { createStorage as createMinioStorage, createFrameStorage } from '@ai-upscaler/core/src/storage/minio';
+import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
+import { createAssertQueue } from './http/prehandlers/assert-queue';
+import { createAssertJob } from './http/prehandlers/assert-job';
 import createServer from './server';
 import getQueue from './http/get-queue';
 import getAvailability from './http/get-availability';
@@ -39,30 +39,12 @@ for (const variable of requiredEnvVariables) {
   }
 }
 
-function createAssertQueue(queue: QueueStore): preHandlerAsyncHookHandler {
-  return async function assertQueue(request, reply) {
-    const queueList = await queue.getAll();
-
-    if (!request.cookies.queue || !queueList[request.cookies.queue]) {
-      reply.code(400).send('Not in queue or invalid queue id');
-    }
-  };
-}
-
 async function start() {
   // This will be used for saving data in Stores
   const redisDB = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
   });
-
-  const redisSub = new Redis({
-    host: process.env.REDIS_HOST,
-    port: Number(process.env.REDIS_PORT),
-    maxRetriesPerRequest: null,
-  });
-
-  await redisSub.subscribe('getFrames:response', 'getFrame:response');
 
   const minioClient = new minio.Client({
     endPoint: process.env.MINIO_ENDPOINT,
@@ -122,20 +104,48 @@ async function start() {
   server.route({
     method: 'GET',
     url: '/frames',
-    preHandler: [createAssertQueue(queue)],
+    preHandler: [
+      createAssertQueue(queue),
+      createAssertJob(jobs),
+    ],
     handler: getFrames({
-      jobs,
-      createStorage: (id) => createFrameStorage(minioClient, 'frames', id),
+      async getFramesProcessed(id) {
+        const jobId = await jobs.get(id);
+        let count = 0;
+
+        return new Promise((resolve, reject) => {
+          minioClient
+            .listObjects('frames', `${jobId}/enhanced`, true)
+            .on('data', (data) => {
+              count += 1;
+            })
+            .once('end', () => resolve(count))
+            .once('error', reject);
+        });
+      },
     }),
   });
 
   server.route({
     method: 'GET',
-    url: '/frame/:frame',
-    preHandler: [createAssertQueue(queue)],
+    url: '/frames/:frame',
+    preHandler: [
+      createAssertQueue(queue),
+      createAssertJob(jobs),
+    ],
     handler: getFrame({
-      jobs,
-      createStorage: (id) => createFrameStorage(minioClient, 'frames', id),
+      async getFrameStream(id, frame, enhanced) {
+        const jobId = await jobs.get(id);
+        const directory = enhanced ? 'enhanced' : 'raw';
+        return minioClient
+          .getObject('frames', `${jobId}/${directory}/frame_${frame}.png`)
+          .catch((e) => {
+            if (e.code === 'NoSuchKey') {
+              return undefined;
+            }
+            throw e;
+          });
+      },
     }),
   });
 

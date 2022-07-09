@@ -24,7 +24,7 @@
             <FrameCompare
               v-else
               class="h-full"
-              :frames="frames"
+              :total="frames"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default {
       total: null,
       position: null,
       progress: {},
-      frames: [],
+      frames: 0,
 
       showScroll: true,
       scrollTop: 0
@@ -132,11 +132,7 @@ export default {
         }),
         refreshQueue: () => this.$axios.$put('/api/queue'),
         getProgress: () => this.$axios.$get('/api/progress'),
-        getFrames: () => this.$axios.$get('/api/frames').then((frames) => {
-          return frames.map((frame) => {
-            return [`/api/frame/${frame}`, `/api/frame/${frame}?enhanced=true`]
-          })
-        }),
+        getFrames: () => this.$axios.$get('/api/frames').then(({ frames }) => frames),
         upload: (file) => {
           const formData = new FormData()
           formData.append('file', file)

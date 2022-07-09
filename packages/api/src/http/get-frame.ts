@@ -1,6 +1,5 @@
 import { RouteHandler as BaseRouteHandler } from 'fastify';
-import { JobStore } from '@ai-upscaler/core/src/jobs/store';
-import { FrameStorage } from '@ai-upscaler/core/src/storage/storage';
+import { Readable } from 'stream';
 
 type RouteHandler = BaseRouteHandler<{
   Querystring: {
@@ -12,31 +11,15 @@ type RouteHandler = BaseRouteHandler<{
 }>
 
 interface GetFrameOptions {
-  jobs: JobStore
-  createStorage(id: string): FrameStorage
+  getFrameStream(id: string, frame: string, enhanced: boolean): Promise<Readable | undefined>
 }
 
-export default function createGetFrame({
-  jobs,
-  createStorage,
-}: GetFrameOptions): RouteHandler {
+export default function createGetFrame({ getFrameStream }: GetFrameOptions): RouteHandler {
   return async function getFrame(request, reply) {
     const id = request.cookies.queue;
     const enhanced = request.query.enhanced === 'true';
     const { frame } = request.params;
-
-    const job = await jobs.get(id);
-
-    if (!job) {
-      return reply
-        .code(400)
-        .send({
-          message: 'Job not found',
-        });
-    }
-
-    const storage = createStorage(job);
-    const stream = await storage.getFrame(frame, enhanced);
+    const stream = await getFrameStream(id, frame, enhanced);
 
     if (!stream) {
       return reply
