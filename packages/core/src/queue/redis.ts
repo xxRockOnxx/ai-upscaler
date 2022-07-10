@@ -30,7 +30,11 @@ function shouldBeRemoved(item: Queue) {
   return false;
 }
 
-function parseResponse(response: Record<string, string>): Queue {
+function parseResponse(response: Record<string, string>): Queue | undefined {
+  if (Object.keys(response).length === 0) {
+    return undefined;
+  }
+
   return {
     status: response.status as Queue['status'],
     position: parseInt(response.position, 10),
