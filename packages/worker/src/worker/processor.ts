@@ -23,8 +23,7 @@ export interface CreateUpscaleProcessorOptions {
 }
 
 export interface UpscalePayload {
-  id: string
-  input: string
+  user: string
 }
 
 export type UpscaleProcessor = Processor<UpscalePayload, void, 'upscale'>;

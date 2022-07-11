@@ -104,19 +104,19 @@ async function start() {
       const enhancedVideoPath = jobStorage.path(filename);
 
       return {
-        getRawVideoPath: () => jobStorage.path(job.data.id),
+        getRawVideoPath: () => jobStorage.path(job.data.user),
         getEnhancedVideoPath: () => enhancedVideoPath,
         getRawFramePath: (frame) => jobStorage.path(DIR_RAW_FRAMES, frame ?? ''),
         getEnhancedFramePath: (frame) => jobStorage.path(DIR_ENHANCED_FRAMES, frame ?? ''),
 
         // eslint-disable-next-line max-len
-        downloadRawVideo: async () => jobStorage.store(job.data.id, await uploadStorage.get(job.data.id)),
+        downloadRawVideo: async () => jobStorage.store(job.data.user, await uploadStorage.get(job.data.user)),
 
         // eslint-disable-next-line max-len
         uploadEnhancedVideo: async () => {
           await Promise.all([
             downloadStorage.store(job.id, await jobStorage.get(filename)),
-            downloadStore.save(job.data.id, job.id),
+            downloadStore.save(job.data.user, job.id),
           ]);
         },
 

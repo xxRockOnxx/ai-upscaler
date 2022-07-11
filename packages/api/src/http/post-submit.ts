@@ -71,9 +71,8 @@ export default function createPostSubmit({
         .send({ message: 'Expected `file` field' });
     }
 
-    const id = request.cookies.queue;
-    const queueList = await queue.getAll();
-    const queueItem = queueList[id];
+    const user = request.cookies.queue;
+    const queueItem = await queue.get(user);
 
     if (queueItem.position !== 1) {
       return reply
@@ -90,17 +89,17 @@ export default function createPostSubmit({
     let metadata;
 
     try {
-      await tmpStorage.store(id, data.file);
+      await tmpStorage.store(user, data.file);
 
-      if (!validateMIME(await getMIME(tmpStorage.path(id)))) {
+      if (!validateMIME(await getMIME(tmpStorage.path(user)))) {
         return reply
           .code(400)
           .send({ message: 'Expected video/mp4' });
       }
 
-      metadata = await analyze(tmpStorage.path(id));
+      metadata = await analyze(tmpStorage.path(user));
     } catch (e) {
-      await tmpStorage.delete(id);
+      await tmpStorage.delete(user);
       throw e;
     }
 
@@ -116,16 +115,16 @@ export default function createPostSubmit({
     }
 
     await uploadStorage
-      .store(id, fs.createReadStream(tmpStorage.path(id)))
-      .finally(() => tmpStorage.delete(id));
+      .store(user, fs.createReadStream(tmpStorage.path(user)))
+      .finally(() => tmpStorage.delete(user));
 
     try {
       const job = await bull.add('upscale', {
-        id,
+        user,
       });
 
-      await queue.markAsStatus(id, 'processing');
-      await jobs.save(id, job.id);
+      await queue.markAsStatus(user, 'processing');
+      await jobs.save(user, job.id);
 
       return reply
         .code(201)

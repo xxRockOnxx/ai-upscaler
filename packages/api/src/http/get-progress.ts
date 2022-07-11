@@ -33,7 +33,7 @@ export default function createGetProgress({ bull }: GetProgressOptions): RouteHa
         });
     }
 
-    if (job.data.id !== request.cookies.queue) {
+    if (job.data.user !== request.cookies.queue) {
       return reply
         .code(401)
         .send({

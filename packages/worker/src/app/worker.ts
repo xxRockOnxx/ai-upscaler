@@ -74,7 +74,7 @@ export function createWorker({
   );
 
   function cleanupJob(job: UpscaleJob) {
-    jobStore.delete(job.data.id);
+    jobStore.delete(job.data.user);
 
     createJobEmitter(job).removeAllListeners();
 
@@ -97,7 +97,7 @@ export function createWorker({
       console.log('Upscale complete');
 
       queueStore
-        .markAsStatus(job.data.id, 'finished')
+        .markAsStatus(job.data.user, 'finished')
         .then(() => queueStore.sortWaiting());
 
       cleanupJob(job);
@@ -110,7 +110,7 @@ export function createWorker({
       });
 
       queueStore
-        .markAsStatus(job.data.id, 'failed')
+        .markAsStatus(job.data.user, 'failed')
         .then(() => queueStore.sortWaiting());
 
       cleanupJob(job);
