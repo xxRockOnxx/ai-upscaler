@@ -1,6 +1,5 @@
 import { RouteHandler } from 'fastify';
 import { Magic, MAGIC_MIME_TYPE } from 'mmmagic';
-import { v4 as uuid } from 'uuid';
 import { Queue } from 'bullmq';
 import * as fs from 'fs';
 import { FfprobeStream } from 'fluent-ffmpeg';
@@ -88,28 +87,20 @@ export default function createPostSubmit({
         .send({ message: 'Already processing' });
     }
 
-    let outfile;
     let metadata;
 
-    // Store with filename as UUID to prevent collisions.
-    // Users may have different videos with the same name.
-    const filename = uuid();
-
     try {
-      await tmpStorage.store(filename, data.file);
+      await tmpStorage.store(id, data.file);
 
-      const mime = await getMIME(tmpStorage.path(filename));
-
-      if (!validateMIME(mime)) {
+      if (!validateMIME(await getMIME(tmpStorage.path(id)))) {
         return reply
           .code(400)
           .send({ message: 'Expected video/mp4' });
       }
 
-      outfile = tmpStorage.path(filename);
-      metadata = await analyze(outfile);
+      metadata = await analyze(tmpStorage.path(id));
     } catch (e) {
-      await tmpStorage.delete(filename);
+      await tmpStorage.delete(id);
       throw e;
     }
 
@@ -125,30 +116,28 @@ export default function createPostSubmit({
     }
 
     await uploadStorage
-      .store(filename, fs.createReadStream(outfile))
-      .finally(() => tmpStorage.delete(filename));
+      .store(id, fs.createReadStream(tmpStorage.path(id)))
+      .finally(() => tmpStorage.delete(id));
 
-    return bull
-      .add('upscale', {
+    try {
+      const job = await bull.add('upscale', {
         id,
-        input: filename,
-      })
-      .then((job) => {
-        queue.markAsStatus(id, 'processing');
-        jobs.save(id, job.id);
-
-        return reply
-          .code(201)
-          .send({
-            job: job.id,
-          });
-      })
-      .catch((e) => {
-        request.log.error('Failed to add job to queue');
-        request.log.error(e);
-        return reply
-          .code(500)
-          .send({ message: 'Failed to add job to queue' });
       });
+
+      await queue.markAsStatus(id, 'processing');
+      await jobs.save(id, job.id);
+
+      return reply
+        .code(201)
+        .send({
+          job: job.id,
+        });
+    } catch (e) {
+      request.log.error(e);
+
+      return reply
+        .code(500)
+        .send({ message: 'Failed to add job to queue' });
+    }
   };
 }
