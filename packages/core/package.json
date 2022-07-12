@@ -16,7 +16,8 @@
     "@types/minio": "^7.0.13",
     "@types/node": "^18.0.0",
     "dotenv": "^16.0.1",
-    "ioredis": "^5.1.0"
+    "ioredis": "^5.1.0",
+    "minio": "^7.0.29"
   },
   "peerDependencies": {
     "fs-extra": "^10.1.0",
