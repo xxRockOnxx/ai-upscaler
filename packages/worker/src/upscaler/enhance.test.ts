@@ -28,25 +28,33 @@ describe('enhance.ts', () => {
 
       await new Promise((resolve, reject) => {
         enhanceFrames({
-          data: {
-            input: '',
-            output: '',
-          },
-          onProgress,
-          onDone: resolve,
-          onError: reject,
-        });
+          input: '',
+          output: '',
+        })
+          .on('progress', onProgress)
+          .once('done', resolve)
+          .once('error', reject);
       });
 
       expect(onProgress).toBeCalledTimes(2);
-      expect(onProgress).toHaveBeenNthCalledWith(1, 10, []);
-      expect(onProgress).toHaveBeenNthCalledWith(2, 20, []);
+
+      expect(onProgress).toHaveBeenNthCalledWith(1, {
+        percent: 10,
+        frames: [],
+      });
+
+      expect(onProgress).toHaveBeenNthCalledWith(2, {
+        percent: 20,
+        frames: [],
+      });
     });
 
     it('should emit the total progress and the frame done', async () => {
       const mockedFs = fs as jest.MockedObjectDeep<typeof fs>;
       const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore wrong detected type
       mockedFs.promises.readdir.mockResolvedValue([
         'frame_001.png',
         'frame_002.png',
@@ -61,21 +69,25 @@ describe('enhance.ts', () => {
 
       await new Promise((resolve, reject) => {
         enhanceFrames({
-          data: {
-            input: 'raw/frames',
-            output: 'enhanced/frames',
-          },
-          onProgress,
-          onDone: resolve,
-          onError: reject,
-        });
+          input: 'raw/frames',
+          output: 'enhanced/frames',
+        })
+          .on('progress', onProgress)
+          .once('done', resolve)
+          .once('error', reject);
       });
 
       // Expect 50% progress because 1 out of 2 frame is done
-      expect(onProgress).toHaveBeenNthCalledWith(1, 50, ['frame_001.png']);
+      expect(onProgress).toHaveBeenNthCalledWith(1, {
+        percent: 50,
+        frames: ['frame_001.png'],
+      });
 
-      // Exepect 75% progresse because the second one is 50% done.
-      expect(onProgress).toHaveBeenNthCalledWith(2, 75, []);
+      // Exepect 75% progress because the second one is 50% done.
+      expect(onProgress).toHaveBeenNthCalledWith(2, {
+        percent: 75,
+        frames: [],
+      });
     });
   });
 
@@ -89,14 +101,11 @@ describe('enhance.ts', () => {
 
       const promise = new Promise((resolve, reject) => {
         enhanceFrames({
-          data: {
-            input: '',
-            output: '',
-          },
-          onProgress: () => null,
-          onDone: resolve,
-          onError: reject,
-        });
+          input: '',
+          output: '',
+        })
+          .once('done', resolve)
+          .once('error', reject);
       });
 
       await expect(promise).rejects.toThrowError();
@@ -116,14 +125,11 @@ describe('enhance.ts', () => {
 
       const promise = new Promise((resolve, reject) => {
         enhanceFrames({
-          data: {
-            input: '',
-            output: '',
-          },
-          onProgress: () => null,
-          onDone: resolve,
-          onError: reject,
-        });
+          input: '',
+          output: '',
+        })
+          .once('done', resolve)
+          .once('error', reject);
       });
 
       await expect(promise).rejects.toThrowError();

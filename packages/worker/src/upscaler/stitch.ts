@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg';
+import { EventEmitter } from 'events';
 import { Task } from './task';
 
 export interface StitchData {
@@ -8,16 +9,12 @@ export interface StitchData {
 }
 
 export const stitchFrames: Task<StitchData, void> = function stitchFrames({
-  data: {
-    input,
-    output,
-    framerate,
-  },
-  onProgress,
-  onDone,
-  onError,
+  input,
+  output,
+  framerate,
 }) {
   let cancelled = false;
+  const emitter = new EventEmitter();
 
   const command = ffmpeg(input)
     .inputFps(framerate)
@@ -27,22 +24,34 @@ export const stitchFrames: Task<StitchData, void> = function stitchFrames({
       '-c:v libx264',
       '-pix_fmt yuv420p',
     ])
-    .on('progress', ({ percent }) => onProgress(percent))
+    .on('progress', ({ percent }) => {
+      emitter.emit('progress', {
+        percent,
+      });
+    })
     .on('end', () => {
-      // For some reason ffmpeg doesn't emit progress 100% when it's done.
-      onProgress(100);
-      onDone();
+      // Sometimes ffmpeg wouldn't be able to report for 100% progress
+      // because it'll trigger the `end` event first
+      emitter.emit('progress', {
+        percent: 100,
+      });
+
+      emitter.emit('done');
     })
     .on('error', (err) => {
-      if (!cancelled) {
-        onError(err);
+      if (cancelled) {
+        emitter.emit('cancelled');
+      } else {
+        emitter.emit('error', err);
       }
     });
 
   command.run();
 
-  return () => {
+  emitter.once('cancel', () => {
     cancelled = true;
-    command.kill('');
-  };
+    command.kill('SIGKILL');
+  });
+
+  return emitter;
 };

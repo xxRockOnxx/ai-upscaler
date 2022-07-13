@@ -1,18 +1,30 @@
 import * as fs from 'fs-extra';
-import { EventEmitter } from 'events';
+import type { EventEmitter } from 'events';
 import { extractFrames } from './extract';
 import { enhanceFrames } from './enhance';
 import { stitchFrames } from './stitch';
-import { DeferredTask, makeTaskEmitEvents, taskEventToPromise } from './task';
 
 export interface UpscalerPaths {
   frames(relativePath?: string): string
   enhancedFrames(relativePath?: string): string
 }
+
+export interface UpscalerEventEmitter extends EventEmitter {
+  on(event: 'extract:progress', listener: (data: { percent: number, frames: string[] }) => void): this;
+  on(event: 'enhance:progress', listener: (data: { percent: number, frames: string[] }) => void): this;
+  on(event: 'stitch:progress', listener: (data: { percent: number }) => void): this;
+
+  once(event: 'cancel', listener: () => void): this;
+
+  emit(event: 'extract:progress', data: { percent: number, frames: string[] }): boolean;
+  emit(event: 'enhance:progress', data: { percent: number, frames: string[] }): boolean;
+  emit(event: 'stitch:progress', data: { percent: number }): boolean;
+  emit(event: 'cancel'): boolean;
+}
 interface UpscaleOption {
   input: string
   output: string
-  emitter: EventEmitter
+  emitter: UpscalerEventEmitter
   paths: UpscalerPaths
 }
 
@@ -29,48 +41,68 @@ export async function upscale({
     fs.emptyDir(paths.enhancedFrames()),
   ]);
 
-  // The next 2 functions are created simply to avoid adding the same parameters repeatedly.
-  function curriedMakeTaskEmitEvents<N extends string, T, R>(task: DeferredTask<N, T, R>) {
-    return makeTaskEmitEvents(emitter, task);
-  }
-
-  function curriedTaskEventToPromise(task: string) {
-    return taskEventToPromise(emitter, task);
-  }
-
-  curriedMakeTaskEmitEvents({
-    name: 'extract',
-    callback: extractFrames,
-    data: {
-      input,
-      output: paths.frames(FRAME_NAME),
-    },
+  const extract = extractFrames({
+    input,
+    output: paths.frames(FRAME_NAME),
   });
 
-  const videoDetails = await curriedTaskEventToPromise('extract') as string[];
+  let cancelListener = () => extract.emit('cancel');
 
-  curriedMakeTaskEmitEvents({
-    name: 'enhance',
-    callback: enhanceFrames,
-    data: {
-      input: paths.frames(),
-      output: paths.enhancedFrames(),
-    },
+  const videoDetails = await new Promise<string[]>((resolve, reject) => {
+    extract
+      .on('progress', (progress) => {
+        emitter.emit('extract:progress', progress);
+      })
+      .once('done', resolve)
+      .once('error', reject)
+      .once('cancel', () => reject(new Error('Extract cancelled')));
+  })
+    .finally(() => {
+      emitter.off('cancel', cancelListener);
+    });
+
+  const enhance = enhanceFrames({
+    input: paths.frames(),
+    output: paths.enhancedFrames(),
   });
 
-  await curriedTaskEventToPromise('enhance');
+  cancelListener = () => enhance.emit('cancel');
 
-  curriedMakeTaskEmitEvents({
-    name: 'stitch',
-    callback: stitchFrames,
-    data: {
-      output,
-      input: paths.enhancedFrames(FRAME_NAME),
-      framerate: Number(videoDetails
-        .find((detail) => detail.includes('fps'))
-        .split('fps')[0]),
-    },
+  emitter.once('cancel', cancelListener);
+
+  await new Promise((resolve, reject) => {
+    enhance
+      .on('progress', (progress) => {
+        emitter.emit('enhance:progress', progress);
+      })
+      .once('done', resolve)
+      .once('error', reject)
+      .once('cancelled', () => reject(new Error('Enhance cancelled')));
+  })
+    .finally(() => {
+      emitter.off('cancel', cancelListener);
+    });
+
+  const stitch = stitchFrames({
+    output,
+    input: paths.enhancedFrames(FRAME_NAME),
+    framerate: Number(videoDetails
+      .find((detail) => detail.includes('fps'))
+      .split('fps')[0]),
   });
 
-  await curriedTaskEventToPromise('stitch');
+  cancelListener = () => stitch.emit('cancel');
+
+  await new Promise((resolve, reject) => {
+    stitch
+      .on('progress', (progress) => {
+        emitter.emit('stitch:progress', progress);
+      })
+      .once('done', resolve)
+      .once('error', reject)
+      .once('cancelled', () => reject(new Error('Stitch cancelled')));
+  })
+    .finally(() => {
+      emitter.off('cancel', cancelListener);
+    });
 }

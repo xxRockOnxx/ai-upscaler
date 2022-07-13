@@ -4,6 +4,7 @@ import { Worker, WorkerOptions } from 'bullmq';
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { createUpscaleProcessor, CreateUpscaleProcessorOptions, UpscaleJob } from '../worker/processor';
+import { UpscalerEventEmitter } from '../upscaler/upscaler';
 
 export interface WorkerFactoryOptions extends CreateUpscaleProcessorOptions {
   queueStore: QueueStore
@@ -40,7 +41,7 @@ export function createWorker({
       },
 
       createJobEmitter(job) {
-        const jobEmitter = createJobEmitter(job);
+        const jobEmitter = createJobEmitter(job) as UpscalerEventEmitter;
         const jobStorage = storageMap.get(job.id);
 
         // Add job listeners that will upload the raw and enhanced frames
@@ -49,7 +50,7 @@ export function createWorker({
         // This is added outside the processor because the processor
         // should only be concerned with just upscaling.
         jobEmitter
-          .on('extract:progress', async (_, frames) => {
+          .on('extract:progress', async ({ frames }) => {
             if (!jobStorage) {
               return;
             }
@@ -59,7 +60,7 @@ export function createWorker({
               uploadFrame(job.id, frame, fs.createReadStream(framePath));
             });
           })
-          .on('enhance:progress', async (_, frames) => {
+          .on('enhance:progress', async ({ frames }) => {
             frames.forEach((frame: string) => {
               const framePath = jobStorage.getEnhancedFramePath(frame);
               uploadEnhancedFrame(job.id, frame, fs.createReadStream(framePath));

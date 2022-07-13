@@ -1,6 +1,6 @@
 import { Job, Processor } from 'bullmq';
 import { EventEmitter } from 'events';
-import { upscale } from '../upscaler/upscaler';
+import { upscale, UpscalerEventEmitter } from '../upscaler/upscaler';
 
 export interface UpscaleJobStorage {
   getRawVideoPath(): string
@@ -43,12 +43,12 @@ export function createUpscaleProcessor({
     }
 
     const jobStorage = await createJobStorage(job);
-    const emitter = createJobEmitter(job);
+    const emitter = createJobEmitter(job) as UpscalerEventEmitter;
 
     emitter
-      .on('extract:progress', (progress) => updateTaskProgress('extract', progress))
-      .on('enhance:progress', (progress) => updateTaskProgress('enhance', progress))
-      .on('stitch:progress', (progress) => updateTaskProgress('stitch', progress));
+      .on('extract:progress', ({ percent }) => updateTaskProgress('extract', percent))
+      .on('enhance:progress', ({ percent }) => updateTaskProgress('enhance', percent))
+      .on('stitch:progress', ({ percent }) => updateTaskProgress('stitch', percent));
 
     try {
       await jobStorage.downloadRawVideo();
