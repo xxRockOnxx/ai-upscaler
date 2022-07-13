@@ -8,6 +8,20 @@
         class="mb-4"
       />
 
+      <transition
+        enter-active-class="duration-200 ease-in"
+        leave-active-class="duration-200 ease-out"
+        enter-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <DoNotCloseCard
+          v-show="status === 'processing'"
+          class="mb-4"
+        />
+      </transition>
+
       <div class="border shadow">
         <div class="lg:flex">
           <div class="lg:w-1/2">
