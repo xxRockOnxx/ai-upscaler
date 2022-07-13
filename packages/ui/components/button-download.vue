@@ -4,7 +4,7 @@
     class="inline-block p-2 text-sm font-bold tracking-wider text-white transition rounded"
     :class="disabled ? 'bg-blue-300 pointer-events-none' : 'bg-blue-500'"
   >
-    <div class="flex items-center">
+    <div class="flex items-center justify-center">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="w-6 h-6"

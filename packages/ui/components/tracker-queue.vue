@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-6 space-y-2"
+    class="p-4 space-y-2 text-sm md:p-6 md:text-base"
     :class="{
       'bg-gray-50': status !== 'failed',
       'bg-red-50 text-red-500': ['failed', 'error'].includes(status),

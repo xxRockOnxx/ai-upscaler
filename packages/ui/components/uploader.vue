@@ -4,7 +4,7 @@
     @drop="onDrop"
   >
     <button
-      class="w-full h-full"
+      class="w-full h-full p-10 sm:p-16"
       type="button"
       :disabled="disabled"
       @click="onClick"
@@ -24,7 +24,7 @@
         />
       </svg>
 
-      <div class="mt-6 text-2xl text-center">
+      <div class="mt-6 text-xl text-center md:text-2xl">
         Drop a video to upload
       </div>
 
@@ -46,8 +46,8 @@
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <div class="ml-2">
-            Select Image
+          <div class="ml-2 text-sm md:text-base">
+            Select Video
           </div>
         </div>
       </div>

@@ -27,7 +27,7 @@
           <div class="lg:w-1/2">
             <Uploader
               v-if="status !== 'processing'"
-              class="h-full p-10 sm:p-16"
+              class="h-full"
               :class="{
                 'opacity-50': status === 'unavailable'
               }"
@@ -44,7 +44,7 @@
 
           <div class="lg:w-1/2">
             <TrackerProgress
-              class="px-6 py-12"
+              class="px-4 py-8 md:py-12 md:px-6"
               :status="status"
               :extract="progress.extract"
               :enhance="progress.enhance"

@@ -1,11 +1,11 @@
 <template>
   <button
-    class="p-2 text-sm font-bold tracking-wider transition rounded"
-    :class="disabled ? 'bg-gray-100' : 'bg-gray-200'"
+    class="p-2 text-sm font-bold tracking-wider text-black transition rounded"
+    :class="disabled ? 'bg-gray-100 pointer-events-none text-opacity-50' : 'bg-gray-200'"
     :disabled="disabled"
     @click="$emit('cancel')"
   >
-    <div class="flex items-center">
+    <div class="flex items-center justify-center">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="w-6 h-6"

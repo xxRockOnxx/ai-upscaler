@@ -1,17 +1,17 @@
 <template>
   <div>
     <div class="flex items-center justify-between">
-      <div class="font-bold tracking-wider">
+      <div class="text-sm font-bold tracking-wider md:text-base">
         {{ name }}
       </div>
 
-      <div class="text-sm">
+      <div class="text-xs md:text-sm">
         {{ progress | round(1) }}%
       </div>
     </div>
 
     <progress
-      class="w-full mt-4"
+      class="w-full mt-2 md:mt-4"
       max="100"
       :value="progress"
     />
