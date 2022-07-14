@@ -11,6 +11,7 @@ import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/stora
 import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
 import createCancel from './channels/cancel';
 import { createWorker } from './app/worker';
+import logger from './app/logger';
 import { scopeEventEmitter } from './events';
 
 const requiredEnvVariables = [
@@ -139,7 +140,7 @@ async function start() {
     cancel: createCancel(events),
   });
 
-  console.log('Worker started');
+  logger.info('Worker started');
 }
 
 start();

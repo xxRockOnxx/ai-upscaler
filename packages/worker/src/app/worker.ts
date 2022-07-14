@@ -5,6 +5,7 @@ import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { createUpscaleProcessor, CreateUpscaleProcessorOptions, UpscaleJob } from '../worker/processor';
 import { UpscalerEventEmitter } from '../upscaler/upscaler';
+import logger from './logger';
 
 export interface WorkerFactoryOptions extends CreateUpscaleProcessorOptions {
   queueStore: QueueStore
@@ -85,7 +86,7 @@ export function createWorker({
     // If it doesn't it should be a bug.
     // But checking to prevent app from crashing.
     if (!storageMap.has(job.id)) {
-      console.error(`Could not find storage for job ${job.id}. Cannot cleanup.`);
+      logger.error(`Could not find storage for job ${job.id}. Cannot cleanup.`);
       return;
     }
 
@@ -95,7 +96,7 @@ export function createWorker({
 
   upscaleWorker
     .on('completed', (job) => {
-      console.log('Upscale complete');
+      logger.info('Upscale complete');
 
       queueStore
         .markAsStatus(job.data.user, 'finished')
@@ -104,7 +105,7 @@ export function createWorker({
       cleanupJob(job);
     })
     .on('failed', (job) => {
-      console.error('Upscale failed', {
+      logger.error('Upscale failed', {
         name: job.name,
         data: job.data,
         reason: job.failedReason,
