@@ -70,6 +70,7 @@
           :status="status"
           :total="total"
           :position="position"
+          :processed-on="processedOn"
         />
       </div>
     </div>
@@ -101,6 +102,7 @@ export default {
       total: null,
       position: null,
       progress: {},
+      processedOn: null,
       frames: 0,
 
       showScroll: true,
@@ -181,6 +183,7 @@ export default {
           this.total = state.context.total
           this.position = state.context.position
           this.progress = state.context.progress
+          this.processedOn = state.context.processedOn
           this.frames = state.context.frames
         })
         .start()

@@ -236,7 +236,8 @@ export default function createQueueMachine ({
                 callback: () => getProgress(ctx.jobId),
                 onDone: sendParent((_, evt) => ({
                   type: 'UPDATE_PROGRESS',
-                  progress: evt.data
+                  progress: evt.data.progress,
+                  processedOn: evt.data.processedOn
                 }))
               }))
             }),
@@ -255,6 +256,7 @@ export default function createQueueMachine ({
               UPDATE_PROGRESS: {
                 actions: assign({
                   progress: (_, event) => event.progress,
+                  processedOn: (_, event) => event.processedOn,
                   framesMachine: (ctx, event) => {
                     if (ctx.framesMachine !== null) {
                       return ctx.framesMachine

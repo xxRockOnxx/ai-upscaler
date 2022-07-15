@@ -41,6 +41,9 @@ export default function createGetProgress({ bull }: GetProgressOptions): RouteHa
         });
     }
 
-    return reply.send(job.progress);
+    return reply.send({
+      progress: job.progress,
+      processedOn: job.processedOn,
+    });
   };
 }
