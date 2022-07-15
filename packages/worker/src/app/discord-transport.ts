@@ -32,7 +32,14 @@ export default class DiscordTransport extends Transport {
     // eslint-disable-next-line prefer-const
     let { level, message, ...other } = info;
 
-    if (Object.keys(other).length > 0) {
+    // Workaround but don't worry about it for now.
+    // We don't log error + other objects currently anywhere anyway.
+    if (other.cause) {
+      message += '\n';
+      message += '```\n';
+      message += other.cause.stack;
+      message += '\n```';
+    } else if (Object.keys(other).length > 0) {
       message += '\n';
       message += '```\n';
       message += JSON.stringify(other, null, 2);

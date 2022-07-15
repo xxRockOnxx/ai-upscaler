@@ -1,6 +1,7 @@
 import { Job, Processor } from 'bullmq';
 import { EventEmitter } from 'events';
 import { upscale, UpscalerEventEmitter } from '../upscaler/upscaler';
+import logger from '../app/logger';
 
 export interface UpscaleJobStorage {
   getRawVideoPath(): string
@@ -53,6 +54,7 @@ export function createUpscaleProcessor({
     try {
       await jobStorage.downloadRawVideo();
     } catch (e) {
+      logger.error('Failed to download raw video', { cause: e });
       throw new Error('Failed to download raw video', { cause: e });
     }
 
@@ -67,12 +69,14 @@ export function createUpscaleProcessor({
         },
       });
     } catch (e) {
+      logger.error('Failed to upscale video', { cause: e });
       throw new Error('Failed to upscale video', { cause: e });
     }
 
     try {
       await jobStorage.uploadEnhancedVideo();
     } catch (e) {
+      logger.error('Failed to upload enhanced video', { cause: e });
       throw new Error('Failed to upload enhanced video', { cause: e });
     }
   };

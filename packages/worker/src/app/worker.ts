@@ -105,12 +105,6 @@ export function createWorker({
       cleanupJob(job);
     })
     .on('failed', (job) => {
-      logger.error('Upscale failed', {
-        name: job.name,
-        data: job.data,
-        reason: job.failedReason,
-      });
-
       queueStore
         .markAsStatus(job.data.user, 'failed')
         .then(() => queueStore.sortWaiting());
