@@ -15,6 +15,7 @@ export default function createQueueMachine ({
 
     context: {
       status: null,
+      error: null,
       position: null,
       total: null,
 
@@ -115,7 +116,16 @@ export default function createQueueMachine ({
           id: 'join',
           src: () => joinQueue(),
           onError: {
-            target: 'error'
+            target: 'error',
+            actions: assign({
+              error: (_, event) => {
+                if (event.data.response) {
+                  return event.data.response.data.message
+                }
+
+                return event.data.message
+              }
+            })
           }
         },
 
@@ -199,7 +209,22 @@ export default function createQueueMachine ({
                 })
               },
               onError: {
-                target: '#queue.error'
+                target: '#queue.error',
+                actions: assign({
+                  error: (_, event) => {
+                    if (!event.data.response) {
+                      return event.data.message
+                    }
+
+                    let message = event.data.response.data.message + '.'
+
+                    if (event.data.response.data.errors) {
+                      message += '\n' + event.data.response.data.errors.join('\n')
+                    }
+
+                    return message
+                  }
+                })
               }
             }
           },
@@ -268,8 +293,7 @@ export default function createQueueMachine ({
       cancelling: {
         invoke: {
           id: 'cancel',
-          src: () => cancel(),
-          onDone: 'failed'
+          src: () => cancel()
         }
       },
 
@@ -285,6 +309,9 @@ export default function createQueueMachine ({
       },
 
       failed: {
+        entry: assign({
+          error: (_, event) => 'Something went wrong on the server while processing your file. Consider reporting this to the Discord server.'
+        }),
         on: {
           UPLOAD: {
             target: 'joining',

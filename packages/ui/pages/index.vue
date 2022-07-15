@@ -9,17 +9,29 @@
       />
 
       <transition
-        enter-active-class="duration-200 ease-in"
-        leave-active-class="duration-200 ease-out"
+        enter-active-class="duration-300 ease-in"
+        leave-active-class="duration-300 ease-out"
         enter-class="opacity-0"
         enter-to-class="opacity-100"
         leave-class="opacity-100"
         leave-to-class="opacity-0"
       >
-        <DoNotCloseCard
-          v-show="status === 'processing'"
+        <Card
+          v-if="status === 'processing'"
+          type="info"
           class="mb-4"
-        />
+        >
+          Please do not leave this page while processing.
+          After leaving for 1 minute, the process will be cancelled to conserve resources.
+        </Card>
+
+        <Card
+          v-else-if="status === 'failed' || status === 'error'"
+          type="error"
+          class="mb-4"
+        >
+          <span class="whitespace-pre-line">{{ error }}</span>
+        </Card>
       </transition>
 
       <div class="border shadow">
@@ -84,6 +96,8 @@ export default {
       qm: null,
 
       status: 'unknown',
+      error: null,
+
       total: null,
       position: null,
       progress: {},
@@ -163,6 +177,7 @@ export default {
       this.qm = interpret(qm)
         .onTransition((state) => {
           this.status = typeof state.value === 'string' ? state.value : state.value.active
+          this.error = state.context.error
           this.total = state.context.total
           this.position = state.context.position
           this.progress = state.context.progress

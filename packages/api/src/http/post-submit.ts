@@ -31,11 +31,11 @@ function validateMetadata(metadata: FfprobeStream): string[] {
   const errors = [];
 
   if (Number(metadata.duration) > 60 * 5) {
-    errors.push('Duration currently only supports 5 minutes.');
+    errors.push('Max duration supported is currently only up to 5 minutes.');
   }
 
   if (metadata.height > 720) {
-    errors.push('Height currently only supports up to 720p.');
+    errors.push('Max height supported is currently only up to 720p.');
   }
 
   return errors;
@@ -94,7 +94,7 @@ export default function createPostSubmit({
       if (!validateMIME(await getMIME(tmpStorage.path(user)))) {
         return reply
           .code(400)
-          .send({ message: 'Expected video/mp4' });
+          .send({ message: 'Expected video to be uploaded' });
       }
 
       metadata = await analyze(tmpStorage.path(user));
