@@ -28,6 +28,7 @@ export function createWorker({
 
   createJobStorage,
   createJobEmitter,
+  createJobSignal,
 }: WorkerFactoryOptions) {
   const storageMap = new Map();
   const emitterMap = new Map();
@@ -82,6 +83,8 @@ export function createWorker({
 
         return jobEmitter;
       },
+
+      createJobSignal,
     }),
 
     options,

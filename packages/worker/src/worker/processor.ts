@@ -18,9 +18,13 @@ export interface UpscaleJobStorage {
 export interface CreateUpscaleProcessorOptions {
   createJobStorage: (job: Job) => Promise<UpscaleJobStorage>
 
-  // A function that a caller can use to return an existing `EventEmitter` instance.
-  // A reference to an existing `EventEmitter` instance can be used for cancelling.
+  // A function that a caller can use to provide an emitter
+  // for observing the job's progress.
   createJobEmitter: (job: Job) => EventEmitter
+
+  // A function that a caller can use to provide an `AbortSignal`
+  // for cancelling the job.
+  createJobSignal: (job: Job) => AbortSignal
 }
 
 export interface UpscalePayload {
@@ -34,6 +38,7 @@ export type UpscaleJob = Parameters<UpscaleProcessor>[0]
 export function createUpscaleProcessor({
   createJobStorage,
   createJobEmitter,
+  createJobSignal,
 }: CreateUpscaleProcessorOptions): UpscaleProcessor {
   return async function upscaleProcessor(job) {
     function updateTaskProgress(task: string, progress: number) {
@@ -45,6 +50,7 @@ export function createUpscaleProcessor({
 
     const jobStorage = await createJobStorage(job);
     const emitter = createJobEmitter(job) as UpscalerEventEmitter;
+    const signal = createJobSignal(job);
 
     emitter
       .on('extract:progress', ({ percent }) => updateTaskProgress('extract', percent))
@@ -61,6 +67,7 @@ export function createUpscaleProcessor({
     try {
       await upscale({
         emitter,
+        signal,
         input: jobStorage.getRawVideoPath(),
         output: jobStorage.getEnhancedVideoPath(),
         paths: {

@@ -26,6 +26,7 @@ describe('processor.ts', () => {
         destroy: () => Promise.resolve(),
       }),
       createJobEmitter: () => emitter,
+      createJobSignal: () => new AbortController().signal,
     });
   });
 

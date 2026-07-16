@@ -9,10 +9,8 @@ import createJobStore from '@ai-upscaler/core/src/jobs/redis';
 import createDownloadStore from '@ai-upscaler/core/src/downloads/redis';
 import { createStorage as createLocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { createStorage as createMinioStorage } from '@ai-upscaler/core/src/storage/minio';
-import createCancel from './channels/cancel';
 import { createWorker } from './app/worker';
 import logger from './app/logger';
-import { scopeEventEmitter } from './events';
 
 const requiredEnvVariables = [
   'REDIS_HOST',
@@ -98,13 +96,21 @@ async function start() {
   const downloadStorage = createMinioStorage(minioClient, 'downloads');
   const frameStorage = createMinioStorage(minioClient, 'frames');
 
-  const events = new EventEmitter();
+  // One `AbortController` per active job.
+  // Aborting a job's controller cancels its running tasks.
+  const abortControllers = new Map<string, AbortController>();
 
-  createWorker({
+  const worker = createWorker({
     queueStore,
     jobStore,
 
-    createJobEmitter: (job) => scopeEventEmitter(events, job.id),
+    createJobEmitter: () => new EventEmitter(),
+
+    createJobSignal: (job) => {
+      const controller = new AbortController();
+      abortControllers.set(job.id, controller);
+      return controller.signal;
+    },
 
     async createJobStorage(job) {
       const jobStorage = await createLocalStorage(path.join(workDir, job.id));
@@ -142,9 +148,21 @@ async function start() {
     },
   });
 
+  // Drop the controller once a job settles
+  // so cancelling an old id becomes a no-op.
+  worker
+    .on('completed', (job) => {
+      abortControllers.delete(job.id);
+    })
+    .on('failed', (job) => {
+      if (job) {
+        abortControllers.delete(job.id);
+      }
+    });
+
   await initializePubSub({
     subscriber: redisSub,
-    cancel: createCancel(events),
+    cancel: (id) => abortControllers.get(id)?.abort(),
   });
 
   logger.info('Worker started');
