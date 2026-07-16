@@ -19,7 +19,7 @@ export default function createGetQueue({
   return async function getQueue(request, reply) {
     const id = request.cookies.queue;
     const total = await queue.waitingCount();
-    const queueDetails = await queue.get(id);
+    const queueDetails = id ? await queue.get(id) : undefined;
 
     // No cookie or invalid queue id means "idle"
     if (!id || !queueDetails) {
