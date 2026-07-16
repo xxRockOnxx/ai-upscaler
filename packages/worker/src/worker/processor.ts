@@ -1,5 +1,6 @@
 import { Job, Processor } from 'bullmq';
 import { EventEmitter } from 'events';
+import { Processor as UpscaleProcessorName } from '@ai-upscaler/core/src/upscale/processor';
 import { upscale, UpscalerEventEmitter } from '../upscaler/upscaler';
 import logger from '../app/logger';
 
@@ -29,6 +30,7 @@ export interface CreateUpscaleProcessorOptions {
 
 export interface UpscalePayload {
   user: string
+  processor?: UpscaleProcessorName
 }
 
 export type UpscaleProcessor = Processor<UpscalePayload, void, 'upscale'>;
@@ -68,6 +70,7 @@ export function createUpscaleProcessor({
       await upscale({
         emitter,
         signal,
+        processor: job.data.processor,
         input: jobStorage.getRawVideoPath(),
         output: jobStorage.getEnhancedVideoPath(),
         paths: {

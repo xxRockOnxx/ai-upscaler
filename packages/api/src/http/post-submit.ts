@@ -6,6 +6,7 @@ import { QueueStore } from '@ai-upscaler/core/src/queue/store';
 import { LocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { Storage } from '@ai-upscaler/core/src/storage/storage';
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
+import { DEFAULT_PROCESSOR, isProcessor } from '@ai-upscaler/core/src/upscale/processor';
 import analyze from '../analyze';
 
 function validateMetadata(metadata: FfprobeStream): string[] {
@@ -51,6 +52,15 @@ export default function createPostSubmit({
         .code(400)
         .send({ message: 'Expected `file` field' });
     }
+
+    // The `processor` text field is sent before the file part, so it is
+    // available on `data.fields`. Fall back to the default for older clients
+    // or an unrecognised value rather than rejecting the upload.
+    const processorField = data.fields?.processor;
+    const processorValue = Array.isArray(processorField)
+      ? undefined
+      : (processorField as { value?: unknown } | undefined)?.value;
+    const processor = isProcessor(processorValue) ? processorValue : DEFAULT_PROCESSOR;
 
     const user = request.cookies.queue;
     const queueItem = await queue.get(user);
@@ -143,6 +153,7 @@ export default function createPostSubmit({
     try {
       job = await bull.add('upscale', {
         user,
+        processor,
       });
 
       await jobs.save(user, job.id);

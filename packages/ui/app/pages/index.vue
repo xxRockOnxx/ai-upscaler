@@ -37,15 +37,24 @@
       <div class="border shadow">
         <div class="lg:flex">
           <div class="lg:w-1/2">
-            <Uploader
-              v-if="status !== 'processing'"
-              class="h-full"
-              :class="{
-                'opacity-50': status === 'unavailable'
-              }"
-              :disabled="status === 'unavailable'"
-              @change="onFileChange"
-            />
+            <template v-if="status !== 'processing'">
+              <div class="px-4 pt-6 md:px-6">
+                <ProcessorSelect
+                  :model-value="processor"
+                  :disabled="status === 'unavailable'"
+                  @change="processor = $event"
+                />
+              </div>
+
+              <Uploader
+                class="h-full"
+                :class="{
+                  'opacity-50': status === 'unavailable'
+                }"
+                :disabled="status === 'unavailable'"
+                @change="onFileChange"
+              />
+            </template>
 
             <FrameCompare
               v-else
@@ -110,6 +119,8 @@ const progress = ref({})
 const processedOn = ref(null)
 const frames = ref(0)
 
+const processor = ref('real-esrgan')
+
 const showScroll = ref(true)
 const scrollTop = ref(0)
 
@@ -157,8 +168,11 @@ function startQueue () {
     refreshQueue: () => $fetch('/api/queue', { method: 'PUT' }),
     getProgress: jobId => $fetch(`/api/jobs/${jobId}/progress`),
     getFrames: () => $fetch('/api/frames').then(({ frames: f }) => f),
-    upload: (file) => {
+    upload: ({ file, processor }) => {
       const formData = new FormData()
+      // Append `processor` before `file` so the API can read it as a field
+      // alongside the streamed file part.
+      formData.append('processor', processor)
       formData.append('file', file)
       return $fetch('/api/submit', { method: 'POST', body: formData })
     },
@@ -182,7 +196,7 @@ function startQueue () {
 }
 
 function onFileChange (file) {
-  service.value.send({ type: 'UPLOAD', file })
+  service.value.send({ type: 'UPLOAD', file, processor: processor.value })
 }
 
 function onCancel () {

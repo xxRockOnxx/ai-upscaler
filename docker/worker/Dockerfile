@@ -24,6 +24,14 @@ RUN wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/reale
 
 ENV REAL_ESRGAN_PATH=/app/realesrgan/realesrgan-ncnn-vulkan
 
+# Download and extract waifu2x
+RUN wget https://github.com/nihui/waifu2x-ncnn-vulkan/releases/download/20250915/waifu2x-ncnn-vulkan-20250915-linux.zip && \
+  unzip waifu2x-ncnn-vulkan-20250915-linux.zip && \
+  mv waifu2x-ncnn-vulkan-20250915-linux waifu2x && \
+  rm waifu2x-ncnn-vulkan-20250915-linux.zip
+
+ENV WAIFU2X_PATH=/app/waifu2x/waifu2x-ncnn-vulkan
+
 # Install Node.js and enable Yarn
 RUN wget -qO- https://deb.nodesource.com/setup_16.x | bash - && \
   apt update && \

@@ -1,8 +1,16 @@
 import * as fs from 'fs-extra';
 import type { EventEmitter } from 'events';
+import { Processor, DEFAULT_PROCESSOR } from '@ai-upscaler/core/src/upscale/processor';
 import { extractFrames } from './extract';
-import { enhanceFrames } from './enhance';
+import { enhanceFrames, EnhanceData } from './enhance';
+import { enhanceFramesWaifu2x } from './enhance-waifu2x';
 import { stitchFrames } from './stitch';
+import { Task } from './task';
+
+const enhancers: Record<Processor, Task<EnhanceData, void>> = {
+  'real-esrgan': enhanceFrames,
+  waifu2x: enhanceFramesWaifu2x,
+};
 
 export interface UpscalerPaths {
   frames(relativePath?: string): string
@@ -24,6 +32,7 @@ interface UpscaleOption {
   emitter: UpscalerEventEmitter
   paths: UpscalerPaths
   signal?: AbortSignal
+  processor?: Processor
 }
 
 export const FRAME_NAME = 'frame_%d.png';
@@ -34,7 +43,10 @@ export async function upscale({
   emitter,
   paths,
   signal,
+  processor = DEFAULT_PROCESSOR,
 }: UpscaleOption) {
+  const enhanceFramesWith = enhancers[processor] ?? enhancers[DEFAULT_PROCESSOR];
+
   await Promise.all([
     fs.emptyDir(paths.frames()),
     fs.emptyDir(paths.enhancedFrames()),
@@ -48,7 +60,7 @@ export async function upscale({
     onProgress: (progress) => emitter.emit('extract:progress', progress),
   });
 
-  await enhanceFrames({
+  await enhanceFramesWith({
     input: paths.frames(),
     output: paths.enhancedFrames(),
   }, {

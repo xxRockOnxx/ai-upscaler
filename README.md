@@ -1,4 +1,3 @@
-
 # AI Upscaler
 
 [![codecov](https://codecov.io/gh/xxRockOnxx/ai-upscaler/branch/master/graph/badge.svg?token=QTYY6Z1NMQ)](https://codecov.io/gh/xxRockOnxx/ai-upscaler)
@@ -7,7 +6,7 @@ A web-based video upscaling service powered by [Real-ESRGAN](https://github.com/
 
 Plans:
 
-- [ ] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
+- [x] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
 - [ ] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor
 - [ ] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
 - [ ] Add an option to use different REAL-ESRGAN models

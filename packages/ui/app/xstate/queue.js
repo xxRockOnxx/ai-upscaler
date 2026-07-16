@@ -14,7 +14,7 @@ export default function createQueueMachine ({
     actors: {
       poll: pollLogic,
       join: fromPromise(() => joinQueue()),
-      upload: fromPromise(({ input }) => upload(input.file)),
+      upload: fromPromise(({ input }) => upload(input)),
       cancel: fromPromise(() => cancel())
     },
 
@@ -40,6 +40,7 @@ export default function createQueueMachine ({
       total: null,
 
       file: null,
+      processor: 'real-esrgan',
       jobId: null,
 
       progress: {
@@ -94,7 +95,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
           }
         }
       },
@@ -157,7 +158,7 @@ export default function createQueueMachine ({
             on: {
               UPLOAD: {
                 target: 'uploading',
-                actions: assign({ file: ({ event }) => event.file })
+                actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
               }
             }
           },
@@ -166,7 +167,7 @@ export default function createQueueMachine ({
             invoke: {
               id: 'upload',
               src: 'upload',
-              input: ({ context }) => ({ file: context.file }),
+              input: ({ context }) => ({ file: context.file, processor: context.processor }),
               onDone: {
                 target: 'processing',
                 actions: assign({ jobId: ({ event }) => event.output.job })
@@ -260,7 +261,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
           }
         }
       },
@@ -272,7 +273,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
           }
         }
       },
@@ -281,7 +282,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
           }
         }
       },

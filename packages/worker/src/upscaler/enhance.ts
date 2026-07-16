@@ -2,19 +2,11 @@ import path from 'path';
 import { promises as fs } from 'fs-extra';
 import { spawn } from 'child_process';
 import { Task } from './task';
+import computeProgress from './enhance-common';
 
 export interface EnhanceData {
   input: string
   output: string
-}
-
-function computeProgress(totalFiles, processedFiles, currentFile): number {
-  // Each processed file = 100% progress.
-  // 2 out of 4 frames processed is equivalent to:
-  // = ((2 * 100) + 0) / 4 = 50%
-  // = 200 / 4 = 50%
-  const progress = ((processedFiles * 100) + currentFile) / totalFiles;
-  return progress;
 }
 
 export const enhanceFrames: Task<EnhanceData, void> = async function enhanceFrames(

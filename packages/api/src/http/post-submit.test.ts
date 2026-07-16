@@ -64,8 +64,13 @@ describe('post-submit', () => {
     };
   }
 
-  function submit(name?: string) {
+  function submit(name?: string, processor?: string) {
     const data = new FormData();
+
+    // Sent before the file so it is parsed as a field alongside the file part.
+    if (processor) {
+      data.append('processor', processor);
+    }
 
     if (name) {
       currentFixture = fixture(name);
@@ -225,5 +230,27 @@ describe('post-submit', () => {
     expect(queue.markAsStatus).toBeCalledWith('test-id', 'processing');
     expect(queue.markAsStatus).not.toBeCalledWith('test-id', 'ready');
     expect(jobs.save).toBeCalledWith('test-id', 'job-123');
+  });
+
+  it('should forward the selected processor to the job', async () => {
+    bull.add.mockResolvedValue({ id: 'job-123' });
+
+    await submit('video.mp4', 'waifu2x');
+
+    expect(bull.add).toBeCalledWith('upscale', {
+      user: 'test-id',
+      processor: 'waifu2x',
+    });
+  });
+
+  it('should default the processor when none or an invalid one is given', async () => {
+    bull.add.mockResolvedValue({ id: 'job-123' });
+
+    await submit('video.mp4', 'not-a-real-processor');
+
+    expect(bull.add).toBeCalledWith('upscale', {
+      user: 'test-id',
+      processor: 'real-esrgan',
+    });
   });
 });

@@ -17,6 +17,7 @@ const requiredEnvVariables = [
   'REDIS_PORT',
 
   'REAL_ESRGAN_PATH',
+  'WAIFU2X_PATH',
 
   'MINIO_ENDPOINT',
   'MINIO_PORT',
