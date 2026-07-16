@@ -89,7 +89,7 @@
 
 <script setup>
 import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue'
-import { interpret } from 'xstate'
+import { createActor } from 'xstate'
 import createQueueMachine from '../xstate/queue'
 
 useHead({
@@ -119,6 +119,20 @@ const faqEl = ref(null)
 // reactivity is a Vue footgun).
 const service = shallowRef(null)
 let observer = null
+
+/**
+ * Flattens the machine's state value into a single status string for the
+ * template, e.g. 'idle', 'waiting', or 'processing' (whose nested substates
+ * — extracting/comparing — still surface as 'processing').
+ */
+function resolveStatus (value) {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  const active = value.active
+  return typeof active === 'string' ? active : Object.keys(active)[0]
+}
 
 /**
  * Hides the scroll down button when the user scrolls down to the FAQ.
@@ -151,17 +165,20 @@ function startQueue () {
     cancel: () => $fetch('/api/cancel', { method: 'PUT' })
   })
 
-  service.value = interpret(machine)
-    .onTransition((state) => {
-      status.value = typeof state.value === 'string' ? state.value : state.value.active
-      error.value = state.context.error
-      total.value = state.context.total
-      position.value = state.context.position
-      progress.value = state.context.progress
-      processedOn.value = state.context.processedOn
-      frames.value = state.context.frames
-    })
-    .start()
+  const actor = createActor(machine)
+
+  actor.subscribe((snapshot) => {
+    status.value = resolveStatus(snapshot.value)
+    error.value = snapshot.context.error
+    total.value = snapshot.context.total
+    position.value = snapshot.context.position
+    progress.value = snapshot.context.progress
+    processedOn.value = snapshot.context.processedOn
+    frames.value = snapshot.context.frames
+  })
+
+  actor.start()
+  service.value = actor
 }
 
 function onFileChange (file) {

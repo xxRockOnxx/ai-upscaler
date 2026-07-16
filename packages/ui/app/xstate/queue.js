@@ -1,5 +1,5 @@
-import { createMachine, assign, spawn, sendParent } from 'xstate'
-import createPollMachine from './poll'
+import { setup, assign, fromPromise } from 'xstate'
+import { pollLogic } from './poll'
 
 export default function createQueueMachine ({
   getQueue,
@@ -10,7 +10,27 @@ export default function createQueueMachine ({
   getFrames,
   cancel
 }) {
-  return createMachine({
+  return setup({
+    actors: {
+      poll: pollLogic,
+      join: fromPromise(() => joinQueue()),
+      upload: fromPromise(({ input }) => upload(input.file)),
+      cancel: fromPromise(() => cancel())
+    },
+
+    guards: {
+      isIdle: ({ context }) => context.status === 'idle',
+      isWaiting: ({ context }) => context.status === 'waiting',
+      isReady: ({ context }) => context.status === 'ready' && context.file === null,
+      isUploading: ({ context }) => context.status === 'ready' && context.file !== null,
+      isProcessing: ({ context }) => context.status === 'processing',
+      isFailed: ({ context }) => context.status === 'failed',
+      isFinished: ({ context }) => context.status === 'finished',
+      isStitched: ({ context }) => context.status === 'finished' && context.progress.stitch === 100,
+      isUnavailable: ({ context }) => context.status === 'unavailable',
+      extractStarted: ({ context }) => context.progress.extract > 0
+    }
+  }).createMachine({
     id: 'queue',
 
     context: {
@@ -20,11 +40,6 @@ export default function createQueueMachine ({
       total: null,
 
       file: null,
-
-      refreshQueueMachine: null,
-      progressMachine: null,
-      framesMachine: null,
-
       jobId: null,
 
       progress: {
@@ -36,26 +51,23 @@ export default function createQueueMachine ({
       frames: 0
     },
 
+    // Poll the queue for the whole lifetime of the machine.
     invoke: {
       id: 'getQueue',
-      src: createPollMachine({
-        timeout: 2000,
+      src: 'poll',
+      input: {
         callback: getQueue,
-        onDone: sendParent((_, evt) => ({
-          type: 'UPDATE_QUEUE',
-          data: evt.data
-        }))
-      })
+        timeout: 2000,
+        event: 'UPDATE_QUEUE'
+      }
     },
 
     on: {
       UPDATE_QUEUE: {
-        actions: assign((_, event) => {
-          return {
-            status: event.data.status,
-            position: event.data.position,
-            total: event.data.total
-          }
+        actions: assign({
+          status: ({ event }) => event.data.status,
+          position: ({ event }) => event.data.position,
+          total: ({ event }) => event.data.total
         })
       }
     },
@@ -63,40 +75,18 @@ export default function createQueueMachine ({
     initial: 'unknown',
 
     states: {
+      // Bootstrap: route to the right state from the server-reported status
+      // (this is what enables resuming an in-flight job after a reload).
       unknown: {
         always: [
-          {
-            target: 'idle',
-            cond: ({ status }) => status === 'idle'
-          },
-          {
-            target: 'active.waiting',
-            cond: ({ status }) => status === 'waiting'
-          },
-          {
-            target: 'active.ready',
-            cond: ({ status, file }) => status === 'ready' && file === null
-          },
-          {
-            target: 'active.uploading',
-            cond: ({ status, file }) => status === 'ready' && file !== null
-          },
-          {
-            target: 'active.processing',
-            cond: ({ status }) => status === 'processing'
-          },
-          {
-            target: 'failed',
-            cond: ({ status }) => status === 'failed'
-          },
-          {
-            target: 'finished',
-            cond: ({ status }) => status === 'finished'
-          },
-          {
-            target: 'unavailable',
-            cond: ({ status }) => status === 'unavailable'
-          }
+          { target: 'idle', guard: 'isIdle' },
+          { target: 'active.waiting', guard: 'isWaiting' },
+          { target: 'active.ready', guard: 'isReady' },
+          { target: 'active.uploading', guard: 'isUploading' },
+          { target: 'active.processing', guard: 'isProcessing' },
+          { target: 'failed', guard: 'isFailed' },
+          { target: 'finished', guard: 'isFinished' },
+          { target: 'unavailable', guard: 'isUnavailable' }
         ]
       },
 
@@ -104,9 +94,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({
-              file: (_, event) => event.file
-            })
+            actions: assign({ file: ({ event }) => event.file })
           }
         }
       },
@@ -114,76 +102,54 @@ export default function createQueueMachine ({
       joining: {
         invoke: {
           id: 'join',
-          src: () => joinQueue(),
+          src: 'join',
           onError: {
             target: 'error',
             actions: assign({
-              error: (_, event) => {
-                if (event.data.response) {
-                  return event.data.response.data.message
+              error: ({ event }) => {
+                const { error } = event
+
+                if (error.response) {
+                  return error.response.data.message
                 }
 
-                return event.data.message
+                return error.message
               }
             })
           }
         },
 
         always: [
-          {
-            target: 'active.waiting',
-            cond: ({ status }) => status === 'waiting'
-          },
-          {
-            target: 'active.ready',
-            cond: ({ status, file }) => status === 'ready' && file === null
-          },
-          {
-            target: 'active.uploading',
-            cond: ({ status, file }) => status === 'ready' && file !== null
-          }
+          { target: 'active.waiting', guard: 'isWaiting' },
+          { target: 'active.ready', guard: 'isReady' },
+          { target: 'active.uploading', guard: 'isUploading' }
         ]
       },
 
       active: {
-        entry: assign({
-          refreshQueueMachine: () => spawn(createPollMachine({
-            timeout: 30000,
-            callback: refreshQueue
-          }))
-        }),
-
-        exit: (ctx) => {
-          ctx.refreshQueueMachine.stop()
-          ctx.refreshQueueMachine = null
+        // Tell the server we're still here; result is ignored (no event).
+        invoke: {
+          id: 'refreshQueue',
+          src: 'poll',
+          input: {
+            callback: refreshQueue,
+            timeout: 30000
+          }
         },
 
         always: [
-          {
-            target: 'idle',
-            cond: ({ status }) => status === 'idle'
-          },
-          {
-            target: 'failed',
-            cond: ({ status }) => status === 'failed'
-          },
-          {
-            target: 'finished',
-            cond: ({ status, progress }) => status === 'finished' && progress.stitch === 100
-          }
+          { target: 'idle', guard: 'isIdle' },
+          { target: 'failed', guard: 'isFailed' },
+          { target: 'finished', guard: 'isStitched' }
         ],
+
+        initial: 'waiting',
 
         states: {
           waiting: {
             always: [
-              {
-                target: 'ready',
-                cond: ({ status, file }) => status === 'ready' && !file
-              },
-              {
-                target: 'uploading',
-                cond: ({ status, file }) => status === 'ready' && file
-              }
+              { target: 'ready', guard: 'isReady' },
+              { target: 'uploading', guard: 'isUploading' }
             ]
           },
 
@@ -191,9 +157,7 @@ export default function createQueueMachine ({
             on: {
               UPLOAD: {
                 target: 'uploading',
-                actions: assign({
-                  file: (_, event) => event.file
-                })
+                actions: assign({ file: ({ event }) => event.file })
               }
             }
           },
@@ -201,25 +165,26 @@ export default function createQueueMachine ({
           uploading: {
             invoke: {
               id: 'upload',
-              src: ({ file }) => upload(file),
+              src: 'upload',
+              input: ({ context }) => ({ file: context.file }),
               onDone: {
                 target: 'processing',
-                actions: assign({
-                  jobId: (_, event) => event.data.job
-                })
+                actions: assign({ jobId: ({ event }) => event.output.job })
               },
               onError: {
                 target: '#queue.error',
                 actions: assign({
-                  error: (_, event) => {
-                    if (!event.data.response) {
-                      return event.data.message
+                  error: ({ event }) => {
+                    const { error } = event
+
+                    if (!error.response) {
+                      return error.message
                     }
 
-                    let message = event.data.response.data.message + '.'
+                    let message = error.response.data.message + '.'
 
-                    if (event.data.response.data.errors) {
-                      message += '\n' + event.data.response.data.errors.join('\n')
+                    if (error.response.data.errors) {
+                      message += '\n' + error.response.data.errors.join('\n')
                     }
 
                     return message
@@ -230,62 +195,54 @@ export default function createQueueMachine ({
           },
 
           processing: {
-            entry: assign({
-              progressMachine: ctx => spawn(createPollMachine({
+            // Poll progress for the whole processing phase (auto-stops on exit).
+            invoke: {
+              id: 'progress',
+              src: 'poll',
+              input: ({ context }) => ({
+                callback: () => getProgress(context.jobId),
                 timeout: 2000,
-                callback: () => getProgress(ctx.jobId),
-                onDone: sendParent((_, evt) => ({
-                  type: 'UPDATE_PROGRESS',
-                  progress: evt.data.progress,
-                  processedOn: evt.data.processedOn
-                }))
-              }))
-            }),
-
-            exit: (ctx) => {
-              ctx.progressMachine.stop()
-              ctx.progressMachine = null
-
-              if (ctx.framesMachine !== null) {
-                ctx.framesMachine.stop()
-                ctx.framesMachine = null
-              }
+                event: 'UPDATE_PROGRESS'
+              })
             },
 
             on: {
               UPDATE_PROGRESS: {
                 actions: assign({
-                  progress: (_, event) => event.progress,
-                  processedOn: (_, event) => event.processedOn,
-                  framesMachine: (ctx, event) => {
-                    if (ctx.framesMachine !== null) {
-                      return ctx.framesMachine
-                    }
-
-                    if (event.progress.extract > 0) {
-                      return spawn(createPollMachine({
-                        timeout: 2000,
-                        callback: getFrames,
-                        onDone: sendParent((_, evt) => ({
-                          type: 'UPDATE_FRAMES',
-                          frames: evt.data
-                        }))
-                      }))
-                    }
-
-                    return null
-                  }
-                })
-              },
-
-              UPDATE_FRAMES: {
-                actions: assign({
-                  frames: (_, event) => event.frames
+                  progress: ({ event }) => event.data.progress,
+                  processedOn: ({ event }) => event.data.processedOn
                 })
               },
 
               CANCEL: {
                 target: '#queue.cancelling'
+              }
+            },
+
+            // Only start polling frames once extraction has begun.
+            initial: 'extracting',
+
+            states: {
+              extracting: {
+                always: { target: 'comparing', guard: 'extractStarted' }
+              },
+
+              comparing: {
+                invoke: {
+                  id: 'frames',
+                  src: 'poll',
+                  input: {
+                    callback: getFrames,
+                    timeout: 2000,
+                    event: 'UPDATE_FRAMES'
+                  }
+                },
+
+                on: {
+                  UPDATE_FRAMES: {
+                    actions: assign({ frames: ({ event }) => event.data })
+                  }
+                }
               }
             }
           }
@@ -295,7 +252,7 @@ export default function createQueueMachine ({
       cancelling: {
         invoke: {
           id: 'cancel',
-          src: () => cancel()
+          src: 'cancel'
         }
       },
 
@@ -303,9 +260,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({
-              file: (_, event) => event.file
-            })
+            actions: assign({ file: ({ event }) => event.file })
           }
         }
       },
@@ -317,9 +272,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({
-              file: (_, event) => event.file
-            })
+            actions: assign({ file: ({ event }) => event.file })
           }
         }
       },
@@ -328,9 +281,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({
-              file: (_, event) => event.file
-            })
+            actions: assign({ file: ({ event }) => event.file })
           }
         }
       },
