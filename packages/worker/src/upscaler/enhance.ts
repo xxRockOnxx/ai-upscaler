@@ -53,38 +53,42 @@ export const enhanceFrames: Task<EnhanceData, void> = async function enhanceFram
   let current = 0;
   let processed = 0;
 
+  // Format: <input> -> <output> done
+  // Source: https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/v0.2.0/src/main.cpp#L413
+  const donePattern = new RegExp([path.join(input, '(\\w+\\.png)'), '->', path.join(output, '(\\w+\\.png)'), 'done'].join(' '));
+
   realesrgan
     .stderr
     .setEncoding('utf8')
     .on('data', (stderr: string) => {
-      // Format: xx.yy%
-      // Source: https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/v0.2.0/src/realesrgan.cpp#L553
-      const [progress] = stderr.match(/^(\d{1,3}\.\d{2})%$/gm) ?? [];
+      // A single chunk can contain multiple lines (e.g. a "done" line
+      // immediately followed by a progress line), so handle them in order.
+      stderr.split('\n').forEach((line) => {
+        // Format: xx.yy%
+        // Source: https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/v0.2.0/src/realesrgan.cpp#L553
+        const [progress] = line.match(/^(\d{1,3}\.\d{2})%$/) ?? [];
 
-      if (progress) {
-        current = parseFloat(progress);
-        onProgress?.({
-          percent: computeProgress(total, processed, current),
-          frames: [],
-        });
-        return;
-      }
+        if (progress) {
+          current = parseFloat(progress);
+          onProgress?.({
+            percent: computeProgress(total, processed, current),
+            frames: [],
+          });
+          return;
+        }
 
-      // Format: <input> -> <output> done
-      // Source: https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/blob/v0.2.0/src/main.cpp#L413
-      const donePattern = [path.join(input, '(\\w+\\.png)'), '->', path.join(output, '(\\w+\\.png)'), 'done'];
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [, inputFrame, outputFrame] = line.match(donePattern) ?? [];
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const [, inputFrame, outputFrame] = stderr.match(new RegExp(donePattern.join(' '))) ?? [];
-
-      if (outputFrame) {
-        processed += 1;
-        current = 0;
-        onProgress?.({
-          percent: computeProgress(total, processed, current),
-          frames: [outputFrame],
-        });
-      }
+        if (outputFrame) {
+          processed += 1;
+          current = 0;
+          onProgress?.({
+            percent: computeProgress(total, processed, current),
+            frames: [outputFrame],
+          });
+        }
+      });
     });
 
   try {

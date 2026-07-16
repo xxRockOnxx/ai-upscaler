@@ -41,6 +41,7 @@ export default function createQueueMachine ({
 
       file: null,
       processor: 'real-esrgan',
+      interpolate: false,
       jobId: null,
 
       progress: {
@@ -95,7 +96,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
           }
         }
       },
@@ -158,7 +159,7 @@ export default function createQueueMachine ({
             on: {
               UPLOAD: {
                 target: 'uploading',
-                actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
+                actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
               }
             }
           },
@@ -167,7 +168,7 @@ export default function createQueueMachine ({
             invoke: {
               id: 'upload',
               src: 'upload',
-              input: ({ context }) => ({ file: context.file, processor: context.processor }),
+              input: ({ context }) => ({ file: context.file, processor: context.processor, interpolate: context.interpolate }),
               onDone: {
                 target: 'processing',
                 actions: assign({ jobId: ({ event }) => event.output.job })
@@ -261,7 +262,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
           }
         }
       },
@@ -273,7 +274,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
           }
         }
       },
@@ -282,7 +283,7 @@ export default function createQueueMachine ({
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan' })
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
           }
         }
       },

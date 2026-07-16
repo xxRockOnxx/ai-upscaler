@@ -44,6 +44,12 @@
                   :disabled="status === 'unavailable'"
                   @change="processor = $event"
                 />
+
+                <InterpolateCheckbox
+                  :model-value="interpolate"
+                  :disabled="status === 'unavailable'"
+                  @change="interpolate = $event"
+                />
               </div>
 
               <Uploader
@@ -69,6 +75,7 @@
               :status="status"
               :extract="progress.extract"
               :enhance="progress.enhance"
+              :interpolate="progress.interpolate ?? null"
               :stitch="progress.stitch"
               @cancel="onCancel"
             />
@@ -120,6 +127,7 @@ const processedOn = ref(null)
 const frames = ref(0)
 
 const processor = ref('real-esrgan')
+const interpolate = ref(false)
 
 const showScroll = ref(true)
 const scrollTop = ref(0)
@@ -168,11 +176,12 @@ function startQueue () {
     refreshQueue: () => $fetch('/api/queue', { method: 'PUT' }),
     getProgress: jobId => $fetch(`/api/jobs/${jobId}/progress`),
     getFrames: () => $fetch('/api/frames').then(({ frames: f }) => f),
-    upload: ({ file, processor }) => {
+    upload: ({ file, processor, interpolate: interpolateFrames }) => {
       const formData = new FormData()
-      // Append `processor` before `file` so the API can read it as a field
-      // alongside the streamed file part.
+      // Append `processor` and `interpolate` before `file` so the API can
+      // read them as fields alongside the streamed file part.
       formData.append('processor', processor)
+      formData.append('interpolate', interpolateFrames ? 'true' : 'false')
       formData.append('file', file)
       return $fetch('/api/submit', { method: 'POST', body: formData })
     },
@@ -196,7 +205,7 @@ function startQueue () {
 }
 
 function onFileChange (file) {
-  service.value.send({ type: 'UPLOAD', file, processor: processor.value })
+  service.value.send({ type: 'UPLOAD', file, processor: processor.value, interpolate: interpolate.value })
 }
 
 function onCancel () {

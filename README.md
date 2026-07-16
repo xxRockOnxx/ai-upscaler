@@ -8,7 +8,7 @@ Plans:
 
 - [x] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
 - [x] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor (via [Anime4KCPP](https://github.com/TianZerL/Anime4KCPP))
-- [ ] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
+- [x] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
 - [ ] Add an option to use different REAL-ESRGAN models
 
 ## Prerequisites
@@ -42,6 +42,12 @@ Set the absolute path in `FFMPEG_PATH` and `FFPROBE_PATH` environment variables 
 Download the correct build of Real-ESRGAN based on your architecture at https://github.com/xinntao/Real-ESRGAN/releases.
 
 Set the absolute path of the binary to `REAL_ESRGAN_PATH` environment variable.
+
+### rife (optional frame interpolation)
+
+Download the correct build of rife-ncnn-vulkan based on your architecture at https://github.com/nihui/rife-ncnn-vulkan/releases.
+
+Set the absolute path of the binary to `RIFE_PATH` environment variable.
 
 ## Run Locally
 

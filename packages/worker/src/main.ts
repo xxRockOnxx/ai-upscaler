@@ -19,6 +19,7 @@ const requiredEnvVariables = [
   'REAL_ESRGAN_PATH',
   'WAIFU2X_PATH',
   'ANIME4K_PATH',
+  'RIFE_PATH',
 
   'MINIO_ENDPOINT',
   'MINIO_PORT',
@@ -35,6 +36,7 @@ for (const variable of requiredEnvVariables) {
 
 export const DIR_RAW_FRAMES = 'raw';
 export const DIR_ENHANCED_FRAMES = 'enhanced';
+export const DIR_INTERPOLATED_FRAMES = 'interpolated';
 
 interface PubSubOptions {
   subscriber: Redis
@@ -124,6 +126,7 @@ async function start() {
         getEnhancedVideoPath: () => enhancedVideoPath,
         getRawFramePath: (frame) => jobStorage.path(DIR_RAW_FRAMES, frame ?? ''),
         getEnhancedFramePath: (frame) => jobStorage.path(DIR_ENHANCED_FRAMES, frame ?? ''),
+        getInterpolatedFramePath: (frame) => jobStorage.path(DIR_INTERPOLATED_FRAMES, frame ?? ''),
 
         // eslint-disable-next-line max-len
         downloadRawVideo: async () => jobStorage.store(job.data.user, await uploadStorage.get(job.data.user)),

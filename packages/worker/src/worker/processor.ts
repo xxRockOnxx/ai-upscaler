@@ -9,6 +9,7 @@ export interface UpscaleJobStorage {
   getEnhancedVideoPath(): string
   getRawFramePath(frame?: string): string
   getEnhancedFramePath(frame?: string): string
+  getInterpolatedFramePath(frame?: string): string
 
   downloadRawVideo(): Promise<void>
   uploadEnhancedVideo(): Promise<void>
@@ -31,6 +32,7 @@ export interface CreateUpscaleProcessorOptions {
 export interface UpscalePayload {
   user: string
   processor?: UpscaleProcessorName
+  interpolate?: boolean
 }
 
 export type UpscaleProcessor = Processor<UpscalePayload, void, 'upscale'>;
@@ -59,6 +61,10 @@ export function createUpscaleProcessor({
       .on('enhance:progress', ({ percent }) => updateTaskProgress('enhance', percent))
       .on('stitch:progress', ({ percent }) => updateTaskProgress('stitch', percent));
 
+    if (job.data.interpolate) {
+      emitter.on('interpolate:progress', ({ percent }) => updateTaskProgress('interpolate', percent));
+    }
+
     try {
       await jobStorage.downloadRawVideo();
     } catch (e) {
@@ -71,11 +77,13 @@ export function createUpscaleProcessor({
         emitter,
         signal,
         processor: job.data.processor,
+        interpolate: job.data.interpolate,
         input: jobStorage.getRawVideoPath(),
         output: jobStorage.getEnhancedVideoPath(),
         paths: {
           frames: jobStorage.getRawFramePath,
           enhancedFrames: jobStorage.getEnhancedFramePath,
+          interpolatedFrames: jobStorage.getInterpolatedFramePath,
         },
       });
     } catch (e) {

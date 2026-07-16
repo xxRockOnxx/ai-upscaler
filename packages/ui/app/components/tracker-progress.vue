@@ -19,6 +19,13 @@
     />
 
     <ProgressTask
+      v-if="interpolate !== null"
+      class="mt-4 md:mt-8"
+      name="Interpolating frames"
+      :progress="interpolate"
+    />
+
+    <ProgressTask
       class="mt-4 md:mt-8"
       name="Stitching frames"
       :progress="stitch"
@@ -54,6 +61,13 @@ defineProps({
   enhance: {
     type: Number,
     default: 0
+  },
+
+  // `null` hides the task — the worker only reports `interpolate`
+  // progress when the job was submitted with interpolation enabled.
+  interpolate: {
+    type: Number,
+    default: null
   },
 
   stitch: {

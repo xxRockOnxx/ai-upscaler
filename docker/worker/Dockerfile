@@ -114,6 +114,14 @@ RUN wget https://github.com/nihui/waifu2x-ncnn-vulkan/releases/download/20250915
 
 ENV WAIFU2X_PATH=/app/waifu2x/waifu2x-ncnn-vulkan
 
+# Download and extract rife (frame interpolation)
+RUN wget https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-ubuntu.zip && \
+  unzip rife-ncnn-vulkan-20221029-ubuntu.zip && \
+  mv rife-ncnn-vulkan-20221029-ubuntu rife && \
+  rm rife-ncnn-vulkan-20221029-ubuntu.zip
+
+ENV RIFE_PATH=/app/rife/rife-ncnn-vulkan
+
 # Install Node.js and enable Yarn
 RUN wget -qO- https://deb.nodesource.com/setup_16.x | bash - && \
   apt update && \

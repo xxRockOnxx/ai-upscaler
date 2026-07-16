@@ -62,6 +62,14 @@ export default function createPostSubmit({
       : (processorField as { value?: unknown } | undefined)?.value;
     const processor = isProcessor(processorValue) ? processorValue : DEFAULT_PROCESSOR;
 
+    // Same convention as `processor`: sent before the file part, defaults
+    // to off for older clients or any value other than the literal 'true'.
+    const interpolateField = data.fields?.interpolate;
+    const interpolateValue = Array.isArray(interpolateField)
+      ? undefined
+      : (interpolateField as { value?: unknown } | undefined)?.value;
+    const interpolate = interpolateValue === 'true';
+
     const user = request.cookies.queue;
     const queueItem = await queue.get(user);
 
@@ -154,6 +162,7 @@ export default function createPostSubmit({
       job = await bull.add('upscale', {
         user,
         processor,
+        interpolate,
       });
 
       await jobs.save(user, job.id);
