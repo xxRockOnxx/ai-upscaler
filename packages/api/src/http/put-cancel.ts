@@ -15,9 +15,9 @@ export default function createPutCancel({
   publish,
 }: PutCancelOptions): RouteHandler {
   return async function putCancel(request, reply) {
-    const queueList = await queue.getAll();
+    const entry = await queue.get(request.cookies.queue);
 
-    if (queueList[request.cookies.queue].status !== 'processing') {
+    if (entry?.status !== 'processing') {
       return reply
         .status(204)
         .send();
