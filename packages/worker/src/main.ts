@@ -48,7 +48,14 @@ async function initializePubSub({
   await subscriber.subscribe('cancel');
 
   subscriber.on('message', (channel, message) => {
-    const data = JSON.parse(message);
+    let data;
+
+    try {
+      data = JSON.parse(message);
+    } catch (e) {
+      logger.error('Ignoring malformed pub/sub message', { channel, cause: e });
+      return;
+    }
 
     // We ignore any job that is not listed here.
     // eslint-disable-next-line default-case
@@ -135,7 +142,7 @@ async function start() {
     },
   });
 
-  initializePubSub({
+  await initializePubSub({
     subscriber: redisSub,
     cancel: createCancel(events),
   });
@@ -143,4 +150,11 @@ async function start() {
   logger.info('Worker started');
 }
 
-start();
+start().catch((e) => {
+  logger.error('Worker failed to start', { cause: e });
+
+  // A failed startup can leave live Redis connections behind,
+  // which would keep the event loop (and a broken worker) alive.
+  // eslint-disable-next-line no-process-exit
+  process.exit(1);
+});
