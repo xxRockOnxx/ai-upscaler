@@ -30,6 +30,7 @@ export function createWorker({
   createJobEmitter,
 }: WorkerFactoryOptions) {
   const storageMap = new Map();
+  const emitterMap = new Map();
 
   const upscaleWorker = new Worker(
     'upscaler',
@@ -43,15 +44,20 @@ export function createWorker({
 
       createJobEmitter(job) {
         const jobEmitter = createJobEmitter(job) as UpscalerEventEmitter;
-        const jobStorage = storageMap.get(job.id);
+        emitterMap.set(job.id, jobEmitter);
 
         // Add job listeners that will upload the raw and enhanced frames
         // to a storage so other services/servers can see it.
         //
         // This is added outside the processor because the processor
         // should only be concerned with just upscaling.
+        //
+        // Storage is resolved lazily inside each handler so this factory
+        // does not depend on `createJobStorage` having been called first.
         jobEmitter
           .on('extract:progress', async ({ frames }) => {
+            const jobStorage = storageMap.get(job.id);
+
             if (!jobStorage) {
               return;
             }
@@ -62,6 +68,12 @@ export function createWorker({
             });
           })
           .on('enhance:progress', async ({ frames }) => {
+            const jobStorage = storageMap.get(job.id);
+
+            if (!jobStorage) {
+              return;
+            }
+
             frames.forEach((frame: string) => {
               const framePath = jobStorage.getEnhancedFramePath(frame);
               uploadEnhancedFrame(job.id, frame, fs.createReadStream(framePath));
@@ -78,7 +90,10 @@ export function createWorker({
   function cleanupJob(job: UpscaleJob) {
     jobStore.delete(job.data.user);
 
-    createJobEmitter(job).removeAllListeners();
+    // Remove listeners on the emitter instance we actually created,
+    // instead of relying on the factory returning the same instance.
+    emitterMap.get(job.id)?.removeAllListeners();
+    emitterMap.delete(job.id);
 
     deleteFrames(job.id);
 
@@ -105,6 +120,13 @@ export function createWorker({
       cleanupJob(job);
     })
     .on('failed', (job) => {
+      // BullMQ emits `failed` with an undefined job in some cases
+      // (e.g. when the job data could not be deserialized).
+      if (!job) {
+        logger.error('Upscale failed without an associated job. Cannot cleanup.');
+        return;
+      }
+
       queueStore
         .markAsStatus(job.data.user, 'failed')
         .then(() => queueStore.sortWaiting());
