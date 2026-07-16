@@ -1,4 +1,4 @@
-export const PROCESSORS = ['real-esrgan', 'waifu2x'] as const;
+export const PROCESSORS = ['real-esrgan', 'waifu2x', 'anime4k'] as const;
 
 export type Processor = typeof PROCESSORS[number];
 

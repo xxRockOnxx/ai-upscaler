@@ -4,12 +4,14 @@ import { Processor, DEFAULT_PROCESSOR } from '@ai-upscaler/core/src/upscale/proc
 import { extractFrames } from './extract';
 import { enhanceFrames, EnhanceData } from './enhance';
 import { enhanceFramesWaifu2x } from './enhance-waifu2x';
+import { enhanceFramesAnime4k } from './enhance-anime4k';
 import { stitchFrames } from './stitch';
 import { Task } from './task';
 
 const enhancers: Record<Processor, Task<EnhanceData, void>> = {
   'real-esrgan': enhanceFrames,
   waifu2x: enhanceFramesWaifu2x,
+  anime4k: enhanceFramesAnime4k,
 };
 
 export interface UpscalerPaths {

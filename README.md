@@ -7,7 +7,7 @@ A web-based video upscaling service powered by [Real-ESRGAN](https://github.com/
 Plans:
 
 - [x] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
-- [ ] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor
+- [x] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor (via [Anime4KCPP](https://github.com/TianZerL/Anime4KCPP))
 - [ ] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
 - [ ] Add an option to use different REAL-ESRGAN models
 

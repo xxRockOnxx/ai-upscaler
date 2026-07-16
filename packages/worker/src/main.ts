@@ -18,6 +18,7 @@ const requiredEnvVariables = [
 
   'REAL_ESRGAN_PATH',
   'WAIFU2X_PATH',
+  'ANIME4K_PATH',
 
   'MINIO_ENDPOINT',
   'MINIO_PORT',

@@ -16,6 +16,9 @@
       <option value="waifu2x">
         waifu2x
       </option>
+      <option value="anime4k">
+        Anime4K
+      </option>
     </select>
   </label>
 </template>
