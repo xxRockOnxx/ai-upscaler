@@ -1,5 +1,5 @@
 import { RouteHandler } from 'fastify';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import * as fs from 'fs';
 import { FfprobeStream } from 'fluent-ffmpeg';
 import { QueueStore } from '@ai-upscaler/core/src/queue/store';
@@ -67,14 +67,39 @@ export default function createPostSubmit({
         .send({ message: 'Already processing' });
     }
 
-    let metadata;
+    // Claim the slot *before* any heavy I/O. The status check above is
+    // check-then-act: without an early claim, a concurrent submit from the
+    // same user could pass it while this request is still storing/probing
+    // the upload and enqueue a duplicate job. The claim itself is still two
+    // Redis round-trips (get + hset), so the window is narrowed rather than
+    // eliminated — a full fix needs a compare-and-set in the QueueStore.
+    await queue.markAsStatus(user, 'processing');
+
+    async function releaseClaim() {
+      try {
+        await queue.markAsStatus(user, 'ready');
+      } catch (err) {
+        request.log.warn(err, 'Failed to release queue claim');
+      }
+    }
+
+    async function rollback() {
+      try {
+        await tmpStorage.delete(user);
+      } catch (err) {
+        request.log.warn(err, 'Failed to remove tmp upload');
+      }
+      await releaseClaim();
+    }
 
     try {
       await tmpStorage.store(user, data.file);
     } catch (e) {
-      await tmpStorage.delete(user);
+      await rollback();
       throw e;
     }
+
+    let metadata;
 
     try {
       // With the MIME sniff gone, ffprobe is the only arbiter of whether
@@ -83,7 +108,7 @@ export default function createPostSubmit({
       metadata = await analyze(tmpStorage.path(user));
     } catch (e) {
       request.log.info(e, 'Rejected upload: not a readable video');
-      await tmpStorage.delete(user);
+      await rollback();
 
       return reply
         .code(400)
@@ -93,6 +118,8 @@ export default function createPostSubmit({
     const errors = validateMetadata(metadata);
 
     if (errors.length > 0) {
+      await rollback();
+
       return reply
         .code(400)
         .send({
@@ -101,16 +128,23 @@ export default function createPostSubmit({
         });
     }
 
-    await uploadStorage
-      .store(user, fs.createReadStream(tmpStorage.path(user)))
-      .finally(() => tmpStorage.delete(user));
+    try {
+      await uploadStorage.store(user, fs.createReadStream(tmpStorage.path(user)));
+    } catch (e) {
+      await rollback();
+      throw e;
+    }
+
+    await tmpStorage.delete(user)
+      .catch((err) => request.log.warn(err, 'Failed to remove tmp upload'));
+
+    let job: Job;
 
     try {
-      const job = await bull.add('upscale', {
+      job = await bull.add('upscale', {
         user,
       });
 
-      await queue.markAsStatus(user, 'processing');
       await jobs.save(user, job.id);
 
       return reply
@@ -120,6 +154,19 @@ export default function createPostSubmit({
         });
     } catch (e) {
       request.log.error(e);
+
+      // Nothing will ever consume the upload (and a bull job without a
+      // saved job id is unreachable), so remove both and release the
+      // claim to let the user retry.
+      if (job) {
+        await job.remove()
+          .catch((err) => request.log.warn(err, 'Failed to remove orphaned bull job'));
+      }
+
+      await uploadStorage.delete(user)
+        .catch((err) => request.log.warn(err, 'Failed to remove orphaned upload'));
+
+      await releaseClaim();
 
       return reply
         .code(500)
