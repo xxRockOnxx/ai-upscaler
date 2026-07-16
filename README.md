@@ -9,6 +9,7 @@ Plans:
 - [x] Support [waifu2x](https://github.com/nagadomi/waifu2x) as processor
 - [x] Support [Anime4K](https://github.com/bloc97/Anime4K) as processor (via [Anime4KCPP](https://github.com/TianZerL/Anime4KCPP))
 - [x] Add [RIFE](https://github.com/hzwer/arXiv2021-RIFE) for frame interpolation
+- [x] Add [CAIN](https://github.com/myungsub/CAIN) for frame interpolation
 - [ ] Add an option to use different REAL-ESRGAN models
 
 ## Prerequisites
@@ -48,6 +49,12 @@ Set the absolute path of the binary to `REAL_ESRGAN_PATH` environment variable.
 Download the correct build of rife-ncnn-vulkan based on your architecture at https://github.com/nihui/rife-ncnn-vulkan/releases.
 
 Set the absolute path of the binary to `RIFE_PATH` environment variable.
+
+### cain (optional frame interpolation)
+
+Download the correct build of cain-ncnn-vulkan based on your architecture at https://github.com/nihui/cain-ncnn-vulkan/releases.
+
+Set the absolute path of the binary to `CAIN_PATH` environment variable.
 
 ## Run Locally
 

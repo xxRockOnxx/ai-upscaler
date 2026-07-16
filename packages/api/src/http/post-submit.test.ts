@@ -64,12 +64,16 @@ describe('post-submit', () => {
     };
   }
 
-  function submit(name?: string, processor?: string) {
+  function submit(name?: string, processor?: string, interpolation?: string) {
     const data = new FormData();
 
     // Sent before the file so it is parsed as a field alongside the file part.
     if (processor) {
       data.append('processor', processor);
+    }
+
+    if (interpolation) {
+      data.append('interpolation', interpolation);
     }
 
     if (name) {
@@ -240,6 +244,7 @@ describe('post-submit', () => {
     expect(bull.add).toBeCalledWith('upscale', {
       user: 'test-id',
       processor: 'waifu2x',
+      interpolation: 'none',
     });
   });
 
@@ -251,6 +256,31 @@ describe('post-submit', () => {
     expect(bull.add).toBeCalledWith('upscale', {
       user: 'test-id',
       processor: 'real-esrgan',
+      interpolation: 'none',
+    });
+  });
+
+  it('should forward the selected interpolation to the job', async () => {
+    bull.add.mockResolvedValue({ id: 'job-123' });
+
+    await submit('video.mp4', 'waifu2x', 'cain');
+
+    expect(bull.add).toBeCalledWith('upscale', {
+      user: 'test-id',
+      processor: 'waifu2x',
+      interpolation: 'cain',
+    });
+  });
+
+  it('should default the interpolation when an invalid one is given', async () => {
+    bull.add.mockResolvedValue({ id: 'job-123' });
+
+    await submit('video.mp4', undefined, 'not-a-real-interpolation');
+
+    expect(bull.add).toBeCalledWith('upscale', {
+      user: 'test-id',
+      processor: 'real-esrgan',
+      interpolation: 'none',
     });
   });
 });

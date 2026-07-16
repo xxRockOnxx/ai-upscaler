@@ -1,6 +1,7 @@
 import { Job, Processor } from 'bullmq';
 import { EventEmitter } from 'events';
 import { Processor as UpscaleProcessorName } from '@ai-upscaler/core/src/upscale/processor';
+import { Interpolation } from '@ai-upscaler/core/src/upscale/interpolation';
 import { upscale, UpscalerEventEmitter } from '../upscaler/upscaler';
 import logger from '../app/logger';
 
@@ -32,7 +33,7 @@ export interface CreateUpscaleProcessorOptions {
 export interface UpscalePayload {
   user: string
   processor?: UpscaleProcessorName
-  interpolate?: boolean
+  interpolation?: Interpolation
 }
 
 export type UpscaleProcessor = Processor<UpscalePayload, void, 'upscale'>;
@@ -61,7 +62,7 @@ export function createUpscaleProcessor({
       .on('enhance:progress', ({ percent }) => updateTaskProgress('enhance', percent))
       .on('stitch:progress', ({ percent }) => updateTaskProgress('stitch', percent));
 
-    if (job.data.interpolate) {
+    if (job.data.interpolation && job.data.interpolation !== 'none') {
       emitter.on('interpolate:progress', ({ percent }) => updateTaskProgress('interpolate', percent));
     }
 
@@ -77,7 +78,7 @@ export function createUpscaleProcessor({
         emitter,
         signal,
         processor: job.data.processor,
-        interpolate: job.data.interpolate,
+        interpolation: job.data.interpolation,
         input: jobStorage.getRawVideoPath(),
         output: jobStorage.getEnhancedVideoPath(),
         paths: {

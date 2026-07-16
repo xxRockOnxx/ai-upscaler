@@ -7,6 +7,7 @@ import { LocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { Storage } from '@ai-upscaler/core/src/storage/storage';
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import { DEFAULT_PROCESSOR, isProcessor } from '@ai-upscaler/core/src/upscale/processor';
+import { DEFAULT_INTERPOLATION, isInterpolation } from '@ai-upscaler/core/src/upscale/interpolation';
 import analyze from '../analyze';
 
 function validateMetadata(metadata: FfprobeStream): string[] {
@@ -63,12 +64,14 @@ export default function createPostSubmit({
     const processor = isProcessor(processorValue) ? processorValue : DEFAULT_PROCESSOR;
 
     // Same convention as `processor`: sent before the file part, defaults
-    // to off for older clients or any value other than the literal 'true'.
-    const interpolateField = data.fields?.interpolate;
-    const interpolateValue = Array.isArray(interpolateField)
+    // to `none` for older clients or an unrecognised value.
+    const interpolationField = data.fields?.interpolation;
+    const interpolationValue = Array.isArray(interpolationField)
       ? undefined
-      : (interpolateField as { value?: unknown } | undefined)?.value;
-    const interpolate = interpolateValue === 'true';
+      : (interpolationField as { value?: unknown } | undefined)?.value;
+    const interpolation = isInterpolation(interpolationValue)
+      ? interpolationValue
+      : DEFAULT_INTERPOLATION;
 
     const user = request.cookies.queue;
     const queueItem = await queue.get(user);
@@ -162,7 +165,7 @@ export default function createPostSubmit({
       job = await bull.add('upscale', {
         user,
         processor,
-        interpolate,
+        interpolation,
       });
 
       await jobs.save(user, job.id);

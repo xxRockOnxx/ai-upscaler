@@ -1,4 +1,4 @@
-import { fromCallback } from 'xstate'
+import { fromCallback } from 'xstate';
 
 /**
  * Reusable polling actor. Calls `input.callback` and, once it resolves, waits
@@ -10,32 +10,36 @@ import { fromCallback } from 'xstate'
  * The returned teardown clears the pending timer — invoking this actor and
  * leaving the state stops the poll automatically (no manual bookkeeping).
  */
-export const pollLogic = fromCallback(({ sendBack, input }) => {
-  const { callback, timeout, event, onError = console.error } = input
+const pollLogic = fromCallback(({ sendBack, input }) => {
+  const {
+    callback, timeout, event, onError = console.error,
+  } = input;
 
-  let timer
-  let stopped = false
+  let timer;
+  let stopped = false;
 
   const loop = async () => {
     try {
-      const data = await callback()
+      const data = await callback();
 
       if (event && !stopped) {
-        sendBack({ type: event, data })
+        sendBack({ type: event, data });
       }
     } catch (e) {
-      onError(e)
+      onError(e);
     }
 
     if (!stopped) {
-      timer = setTimeout(loop, timeout)
+      timer = setTimeout(loop, timeout);
     }
-  }
+  };
 
-  loop()
+  loop();
 
   return () => {
-    stopped = true
-    clearTimeout(timer)
-  }
-})
+    stopped = true;
+    clearTimeout(timer);
+  };
+});
+
+export default pollLogic;

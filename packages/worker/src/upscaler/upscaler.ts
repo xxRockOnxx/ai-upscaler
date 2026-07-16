@@ -1,11 +1,13 @@
 import * as fs from 'fs-extra';
 import type { EventEmitter } from 'events';
 import { Processor, DEFAULT_PROCESSOR } from '@ai-upscaler/core/src/upscale/processor';
+import { Interpolation, DEFAULT_INTERPOLATION } from '@ai-upscaler/core/src/upscale/interpolation';
 import { extractFrames } from './extract';
 import { enhanceFrames, EnhanceData } from './enhance';
 import { enhanceFramesWaifu2x } from './enhance-waifu2x';
 import { enhanceFramesAnime4k } from './enhance-anime4k';
-import { interpolateFrames } from './interpolate';
+import { interpolateFrames, InterpolateData } from './interpolate';
+import { interpolateFramesCain } from './interpolate-cain';
 import { stitchFrames } from './stitch';
 import { Task } from './task';
 
@@ -13,6 +15,11 @@ const enhancers: Record<Processor, Task<EnhanceData, void>> = {
   'real-esrgan': enhanceFrames,
   waifu2x: enhanceFramesWaifu2x,
   anime4k: enhanceFramesAnime4k,
+};
+
+const interpolators: Record<Exclude<Interpolation, 'none'>, Task<InterpolateData, void>> = {
+  rife: interpolateFrames,
+  cain: interpolateFramesCain,
 };
 
 export interface UpscalerPaths {
@@ -39,7 +46,7 @@ interface UpscaleOption {
   paths: UpscalerPaths
   signal?: AbortSignal
   processor?: Processor
-  interpolate?: boolean
+  interpolation?: Interpolation
 }
 
 export const FRAME_NAME = 'frame_%d.png';
@@ -51,9 +58,12 @@ export async function upscale({
   paths,
   signal,
   processor = DEFAULT_PROCESSOR,
-  interpolate = false,
+  interpolation = DEFAULT_INTERPOLATION,
 }: UpscaleOption) {
   const enhanceFramesWith = enhancers[processor] ?? enhancers[DEFAULT_PROCESSOR];
+  const interpolateFramesWith = interpolation === 'none'
+    ? undefined
+    : interpolators[interpolation];
 
   await Promise.all([
     fs.emptyDir(paths.frames()),
@@ -84,12 +94,13 @@ export async function upscale({
   let stitchInput = paths.enhancedFrames(FRAME_NAME);
   let stitchFramerate = framerate;
 
-  if (interpolate) {
-    // `extractFrames` returns video metadata, not a frame list,
-    // so count the enhanced frames on disk for rife's `-n`.
+  if (interpolateFramesWith) {
+    // `extractFrames` returns video metadata, not a frame list, so count
+    // the enhanced frames on disk for the interpolator's progress total
+    // (and rife's `-n`).
     const frameCount = (await fs.readdir(paths.enhancedFrames())).length;
 
-    await interpolateFrames({
+    await interpolateFramesWith({
       input: paths.enhancedFrames(),
       output: paths.interpolatedFrames(),
       frameCount,

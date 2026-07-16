@@ -20,6 +20,7 @@ const requiredEnvVariables = [
   'WAIFU2X_PATH',
   'ANIME4K_PATH',
   'RIFE_PATH',
+  'CAIN_PATH',
 
   'MINIO_ENDPOINT',
   'MINIO_PORT',

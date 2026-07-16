@@ -1,21 +1,21 @@
-import { setup, assign, fromPromise } from 'xstate'
-import { pollLogic } from './poll'
+import { setup, assign, fromPromise } from 'xstate';
+import pollLogic from './poll';
 
-export default function createQueueMachine ({
+export default function createQueueMachine({
   getQueue,
   joinQueue,
   refreshQueue,
   upload,
   getProgress,
   getFrames,
-  cancel
+  cancel,
 }) {
   return setup({
     actors: {
       poll: pollLogic,
       join: fromPromise(() => joinQueue()),
       upload: fromPromise(({ input }) => upload(input)),
-      cancel: fromPromise(() => cancel())
+      cancel: fromPromise(() => cancel()),
     },
 
     guards: {
@@ -28,8 +28,8 @@ export default function createQueueMachine ({
       isFinished: ({ context }) => context.status === 'finished',
       isStitched: ({ context }) => context.status === 'finished' && context.progress.stitch === 100,
       isUnavailable: ({ context }) => context.status === 'unavailable',
-      extractStarted: ({ context }) => context.progress.extract > 0
-    }
+      extractStarted: ({ context }) => context.progress.extract > 0,
+    },
   }).createMachine({
     id: 'queue',
 
@@ -41,16 +41,16 @@ export default function createQueueMachine ({
 
       file: null,
       processor: 'real-esrgan',
-      interpolate: false,
+      interpolation: 'none',
       jobId: null,
 
       progress: {
         extract: 0,
         enhance: 0,
-        stitch: 0
+        stitch: 0,
       },
 
-      frames: 0
+      frames: 0,
     },
 
     // Poll the queue for the whole lifetime of the machine.
@@ -60,8 +60,8 @@ export default function createQueueMachine ({
       input: {
         callback: getQueue,
         timeout: 2000,
-        event: 'UPDATE_QUEUE'
-      }
+        event: 'UPDATE_QUEUE',
+      },
     },
 
     on: {
@@ -69,9 +69,9 @@ export default function createQueueMachine ({
         actions: assign({
           status: ({ event }) => event.data.status,
           position: ({ event }) => event.data.position,
-          total: ({ event }) => event.data.total
-        })
-      }
+          total: ({ event }) => event.data.total,
+        }),
+      },
     },
 
     initial: 'unknown',
@@ -88,17 +88,17 @@ export default function createQueueMachine ({
           { target: 'active.processing', guard: 'isProcessing' },
           { target: 'failed', guard: 'isFailed' },
           { target: 'finished', guard: 'isFinished' },
-          { target: 'unavailable', guard: 'isUnavailable' }
-        ]
+          { target: 'unavailable', guard: 'isUnavailable' },
+        ],
       },
 
       idle: {
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
-          }
-        }
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolation: ({ event }) => event.interpolation ?? 'none' }),
+          },
+        },
       },
 
       joining: {
@@ -109,23 +109,23 @@ export default function createQueueMachine ({
             target: 'error',
             actions: assign({
               error: ({ event }) => {
-                const { error } = event
+                const { error } = event;
 
                 if (error.response) {
-                  return error.response.data.message
+                  return error.response.data.message;
                 }
 
-                return error.message
-              }
-            })
-          }
+                return error.message;
+              },
+            }),
+          },
         },
 
         always: [
           { target: 'active.waiting', guard: 'isWaiting' },
           { target: 'active.ready', guard: 'isReady' },
-          { target: 'active.uploading', guard: 'isUploading' }
-        ]
+          { target: 'active.uploading', guard: 'isUploading' },
+        ],
       },
 
       active: {
@@ -135,14 +135,14 @@ export default function createQueueMachine ({
           src: 'poll',
           input: {
             callback: refreshQueue,
-            timeout: 30000
-          }
+            timeout: 30000,
+          },
         },
 
         always: [
           { target: 'idle', guard: 'isIdle' },
           { target: 'failed', guard: 'isFailed' },
-          { target: 'finished', guard: 'isStitched' }
+          { target: 'finished', guard: 'isStitched' },
         ],
 
         initial: 'waiting',
@@ -151,49 +151,53 @@ export default function createQueueMachine ({
           waiting: {
             always: [
               { target: 'ready', guard: 'isReady' },
-              { target: 'uploading', guard: 'isUploading' }
-            ]
+              { target: 'uploading', guard: 'isUploading' },
+            ],
           },
 
           ready: {
             on: {
               UPLOAD: {
                 target: 'uploading',
-                actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
-              }
-            }
+                actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolation: ({ event }) => event.interpolation ?? 'none' }),
+              },
+            },
           },
 
           uploading: {
             invoke: {
               id: 'upload',
               src: 'upload',
-              input: ({ context }) => ({ file: context.file, processor: context.processor, interpolate: context.interpolate }),
+              input: ({ context }) => ({
+                file: context.file,
+                processor: context.processor,
+                interpolation: context.interpolation,
+              }),
               onDone: {
                 target: 'processing',
-                actions: assign({ jobId: ({ event }) => event.output.job })
+                actions: assign({ jobId: ({ event }) => event.output.job }),
               },
               onError: {
                 target: '#queue.error',
                 actions: assign({
                   error: ({ event }) => {
-                    const { error } = event
+                    const { error } = event;
 
                     if (!error.response) {
-                      return error.message
+                      return error.message;
                     }
 
-                    let message = error.response.data.message + '.'
+                    let message = `${error.response.data.message}.`;
 
                     if (error.response.data.errors) {
-                      message += '\n' + error.response.data.errors.join('\n')
+                      message += `\n${error.response.data.errors.join('\n')}`;
                     }
 
-                    return message
-                  }
-                })
-              }
-            }
+                    return message;
+                  },
+                }),
+              },
+            },
           },
 
           processing: {
@@ -204,21 +208,21 @@ export default function createQueueMachine ({
               input: ({ context }) => ({
                 callback: () => getProgress(context.jobId),
                 timeout: 2000,
-                event: 'UPDATE_PROGRESS'
-              })
+                event: 'UPDATE_PROGRESS',
+              }),
             },
 
             on: {
               UPDATE_PROGRESS: {
                 actions: assign({
                   progress: ({ event }) => event.data.progress,
-                  processedOn: ({ event }) => event.data.processedOn
-                })
+                  processedOn: ({ event }) => event.data.processedOn,
+                }),
               },
 
               CANCEL: {
-                target: '#queue.cancelling'
-              }
+                target: '#queue.cancelling',
+              },
             },
 
             // Only start polling frames once extraction has begun.
@@ -226,7 +230,7 @@ export default function createQueueMachine ({
 
             states: {
               extracting: {
-                always: { target: 'comparing', guard: 'extractStarted' }
+                always: { target: 'comparing', guard: 'extractStarted' },
               },
 
               comparing: {
@@ -236,61 +240,61 @@ export default function createQueueMachine ({
                   input: {
                     callback: getFrames,
                     timeout: 2000,
-                    event: 'UPDATE_FRAMES'
-                  }
+                    event: 'UPDATE_FRAMES',
+                  },
                 },
 
                 on: {
                   UPDATE_FRAMES: {
-                    actions: assign({ frames: ({ event }) => event.data })
-                  }
-                }
-              }
-            }
-          }
-        }
+                    actions: assign({ frames: ({ event }) => event.data }),
+                  },
+                },
+              },
+            },
+          },
+        },
       },
 
       cancelling: {
         invoke: {
           id: 'cancel',
-          src: 'cancel'
-        }
+          src: 'cancel',
+        },
       },
 
       error: {
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
-          }
-        }
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolation: ({ event }) => event.interpolation ?? 'none' }),
+          },
+        },
       },
 
       failed: {
         entry: assign({
-          error: () => 'Something went wrong on the server while processing your file. Consider reporting this to the Discord server.'
+          error: () => 'Something went wrong on the server while processing your file. Consider reporting this to the Discord server.',
         }),
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
-          }
-        }
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolation: ({ event }) => event.interpolation ?? 'none' }),
+          },
+        },
       },
 
       finished: {
         on: {
           UPLOAD: {
             target: 'joining',
-            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolate: ({ event }) => event.interpolate ?? false })
-          }
-        }
+            actions: assign({ file: ({ event }) => event.file, processor: ({ event }) => event.processor ?? 'real-esrgan', interpolation: ({ event }) => event.interpolation ?? 'none' }),
+          },
+        },
       },
 
       unavailable: {
-        type: 'final'
-      }
-    }
-  })
+        type: 'final',
+      },
+    },
+  });
 }

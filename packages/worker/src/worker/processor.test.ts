@@ -20,6 +20,7 @@ describe('processor.ts', () => {
         getRawVideoPath: () => '',
         getRawFramePath: (frame) => frame,
         getEnhancedFramePath: (frame) => frame,
+        getInterpolatedFramePath: (frame) => frame,
         getEnhancedVideoPath: () => '',
         downloadRawVideo: () => Promise.resolve(),
         uploadEnhancedVideo: () => Promise.resolve(),

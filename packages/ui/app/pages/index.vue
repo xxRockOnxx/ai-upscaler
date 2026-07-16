@@ -45,10 +45,10 @@
                   @change="processor = $event"
                 />
 
-                <InterpolateCheckbox
-                  :model-value="interpolate"
+                <InterpolationSelect
+                  :model-value="interpolation"
                   :disabled="status === 'unavailable'"
-                  @change="interpolate = $event"
+                  @change="interpolation = $event"
                 />
               </div>
 
@@ -127,7 +127,7 @@ const processedOn = ref(null)
 const frames = ref(0)
 
 const processor = ref('real-esrgan')
-const interpolate = ref(false)
+const interpolation = ref('none')
 
 const showScroll = ref(true)
 const scrollTop = ref(0)
@@ -176,12 +176,12 @@ function startQueue () {
     refreshQueue: () => $fetch('/api/queue', { method: 'PUT' }),
     getProgress: jobId => $fetch(`/api/jobs/${jobId}/progress`),
     getFrames: () => $fetch('/api/frames').then(({ frames: f }) => f),
-    upload: ({ file, processor, interpolate: interpolateFrames }) => {
+    upload: ({ file, processor, interpolation }) => {
       const formData = new FormData()
-      // Append `processor` and `interpolate` before `file` so the API can
+      // Append `processor` and `interpolation` before `file` so the API can
       // read them as fields alongside the streamed file part.
       formData.append('processor', processor)
-      formData.append('interpolate', interpolateFrames ? 'true' : 'false')
+      formData.append('interpolation', interpolation)
       formData.append('file', file)
       return $fetch('/api/submit', { method: 'POST', body: formData })
     },
@@ -205,7 +205,7 @@ function startQueue () {
 }
 
 function onFileChange (file) {
-  service.value.send({ type: 'UPLOAD', file, processor: processor.value, interpolate: interpolate.value })
+  service.value.send({ type: 'UPLOAD', file, processor: processor.value, interpolation: interpolation.value })
 }
 
 function onCancel () {

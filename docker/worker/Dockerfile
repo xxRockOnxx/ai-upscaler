@@ -122,6 +122,14 @@ RUN wget https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/ri
 
 ENV RIFE_PATH=/app/rife/rife-ncnn-vulkan
 
+# Download and extract cain (frame interpolation)
+RUN wget https://github.com/nihui/cain-ncnn-vulkan/releases/download/20220728/cain-ncnn-vulkan-20220728-ubuntu.zip && \
+  unzip cain-ncnn-vulkan-20220728-ubuntu.zip && \
+  mv cain-ncnn-vulkan-20220728-ubuntu cain && \
+  rm cain-ncnn-vulkan-20220728-ubuntu.zip
+
+ENV CAIN_PATH=/app/cain/cain-ncnn-vulkan
+
 # Install Node.js and enable Yarn
 RUN wget -qO- https://deb.nodesource.com/setup_16.x | bash - && \
   apt update && \
