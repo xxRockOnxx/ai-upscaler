@@ -10,10 +10,9 @@ type RouteHandler = BaseRouteHandler<{
 
 interface PutQueueOptions {
   queue: QueueStore
-  cancelJob: (id: string) => void
 }
 
-export default function createPutQueue({ queue, cancelJob }: PutQueueOptions): RouteHandler {
+export default function createPutQueue({ queue }: PutQueueOptions): RouteHandler {
   return async function putQueue(request, reply) {
     const id = request.cookies.queue ?? uuid();
     const forced = request.body && request.body.forced;
@@ -32,17 +31,6 @@ export default function createPutQueue({ queue, cancelJob }: PutQueueOptions): R
           throw e;
         }
       });
-
-    setTimeout(() => {
-      queue
-        .removeIfExpired(id)
-        .then((removed) => {
-          if (removed) {
-            queue.sortWaiting();
-            cancelJob(id);
-          }
-        });
-    }, 1000 * 60);
 
     return reply
       .cookie('queue', id, {

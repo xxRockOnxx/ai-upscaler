@@ -11,7 +11,7 @@ describe('get-frame', () => {
     await app.register(cookies);
 
     app.get('/frames/:frame', handler({
-      async getFrameStream(id, frame, enhanced) {
+      async getFrameStream() {
         return undefined;
       },
     }));

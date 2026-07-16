@@ -183,10 +183,11 @@ describe('queue', () => {
         updatedAt: new Date(),
       });
 
-      await queue.removeExpired();
+      const removed = await queue.removeExpired();
 
       const list = await queue.getAll();
 
+      expect(removed.sort()).toEqual(['test-1-id', 'test-2-id', 'test-4-id']);
       expect(Object.keys(list)).toHaveLength(2);
       expect(list).toHaveProperty('test-3-id');
       expect(list).toHaveProperty('test-5-id');

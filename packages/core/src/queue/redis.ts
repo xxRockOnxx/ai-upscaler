@@ -149,11 +149,12 @@ export default function createStore(redis: Redis): QueueStore {
     async removeExpired() {
       const list = await this.getAll();
 
-      const promises = Object.keys(list)
-        .filter((id) => shouldBeRemoved(list[id]))
-        .map((id) => redis.del(`queue:${id}`));
+      const expired = Object.keys(list)
+        .filter((id) => shouldBeRemoved(list[id]));
 
-      await Promise.all(promises);
+      await Promise.all(expired.map((id) => redis.del(`queue:${id}`)));
+
+      return expired;
     },
 
     async removeIfExpired(id) {
@@ -179,18 +180,19 @@ export default function createStore(redis: Redis): QueueStore {
     async sortWaiting() {
       const list = await this.getAll();
 
-      await Object.keys(list)
+      const waiting = Object.keys(list)
         .filter((id) => list[id].status === 'waiting')
-        .sort((a, b) => list[a].position - list[b].position)
-        .map((id, index) => {
-          list[id].position = index + 1;
+        .sort((a, b) => list[a].position - list[b].position);
 
-          if (list[id].position === 1) {
-            list[id].status = 'ready';
-          }
+      await Promise.all(waiting.map((id, index) => {
+        list[id].position = index + 1;
 
-          return this.save(id, list[id]);
-        });
+        if (list[id].position === 1) {
+          list[id].status = 'ready';
+        }
+
+        return this.save(id, list[id]);
+      }));
     },
   };
 }

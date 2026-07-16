@@ -28,14 +28,7 @@ export default function registerRoutes(server: Server, {
   server
     .get('/availability', getAvailability({ queue: upscaleQueue }))
     .get('/queue', getQueue({ queue, jobs }))
-    .put('/queue', putQueue({
-      queue,
-      cancelJob: (id) => {
-        jobs
-          .get(id)
-          .then((job) => redisDB.publish('cancel', JSON.stringify({ id: job })));
-      },
-    }));
+    .put('/queue', putQueue({ queue }));
 
   server.route({
     method: 'POST',

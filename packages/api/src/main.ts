@@ -12,12 +12,32 @@ async function start() {
   registerRoutes(server, deps);
 
   // Sweep expired queue entries at boot and periodically afterwards,
-  // so cleanup does not depend on the process being restarted.
-  await deps.queue.removeExpired();
+  // so cleanup does not depend on in-process timers or restarts.
+  // When entries are removed we re-sort the waiting queue and cancel
+  // any job that was still running for a removed entry.
+  const sweepExpired = async () => {
+    const removed = await deps.queue.removeExpired();
+
+    if (removed.length === 0) {
+      return;
+    }
+
+    await deps.queue.sortWaiting();
+
+    await Promise.all(removed.map(async (id) => {
+      const job = await deps.jobs.get(id);
+
+      if (job) {
+        await deps.redisDB.publish('cancel', JSON.stringify({ id: job }));
+      }
+    }));
+  };
+
+  await sweepExpired();
 
   setInterval(() => {
-    deps.queue.removeExpired().catch((error) => {
-      server.log.error(error, 'Failed to remove expired queue entries');
+    sweepExpired().catch((error) => {
+      server.log.error(error, 'Failed to sweep expired queue entries');
     });
   }, 60_000).unref();
 
