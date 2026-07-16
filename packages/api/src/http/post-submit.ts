@@ -1,5 +1,4 @@
 import { RouteHandler } from 'fastify';
-import { Magic, MAGIC_MIME_TYPE } from 'mmmagic';
 import { Queue } from 'bullmq';
 import * as fs from 'fs';
 import { FfprobeStream } from 'fluent-ffmpeg';
@@ -8,24 +7,6 @@ import { LocalStorage } from '@ai-upscaler/core/src/storage/local';
 import { Storage } from '@ai-upscaler/core/src/storage/storage';
 import { JobStore } from '@ai-upscaler/core/src/jobs/store';
 import analyze from '../analyze';
-
-function getMIME(filepath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const magic = new Magic(MAGIC_MIME_TYPE);
-
-    magic.detectFile(filepath, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result as string);
-      }
-    });
-  });
-}
-
-function validateMIME(mime: string): boolean {
-  return mime.startsWith('video/');
-}
 
 function validateMetadata(metadata: FfprobeStream): string[] {
   const errors = [];
@@ -90,17 +71,23 @@ export default function createPostSubmit({
 
     try {
       await tmpStorage.store(user, data.file);
-
-      if (!validateMIME(await getMIME(tmpStorage.path(user)))) {
-        return reply
-          .code(400)
-          .send({ message: 'Expected video to be uploaded' });
-      }
-
-      metadata = await analyze(tmpStorage.path(user));
     } catch (e) {
       await tmpStorage.delete(user);
       throw e;
+    }
+
+    try {
+      // With the MIME sniff gone, ffprobe is the only arbiter of whether
+      // the upload is a video, so a probe failure is a client error (400),
+      // not a server error.
+      metadata = await analyze(tmpStorage.path(user));
+    } catch (e) {
+      request.log.info(e, 'Rejected upload: not a readable video');
+      await tmpStorage.delete(user);
+
+      return reply
+        .code(400)
+        .send({ message: 'Expected video to be uploaded' });
     }
 
     const errors = validateMetadata(metadata);
