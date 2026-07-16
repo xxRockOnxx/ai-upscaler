@@ -54,7 +54,7 @@
     </button>
 
     <input
-      ref="input"
+      ref="inputEl"
       type="file"
       accept="video/*"
       hidden
@@ -64,55 +64,57 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    disabled: {
-      type: Boolean,
-      default: false
-    }
-  },
+<script setup>
+import { ref } from 'vue'
 
-  methods: {
-    onClick () {
-      this.$refs.input.click()
-    },
+const props = defineProps({
+  disabled: {
+    type: Boolean,
+    default: false
+  }
+})
 
-    onFileChange (evt) {
-      this.$emit('change', evt.target.files[0])
-      this.$refs.input.value = null
-    },
+const emit = defineEmits(['change'])
 
-    onDragover (evt) {
-      evt.preventDefault()
-    },
+const inputEl = ref(null)
 
-    onDrop (evt) {
-      evt.preventDefault()
+function onClick () {
+  inputEl.value.click()
+}
 
-      if (this.disabled) {
-        return
-      }
+function onFileChange (evt) {
+  emit('change', evt.target.files[0])
+  inputEl.value.value = null
+}
 
-      if (evt.dataTransfer.files.length === 0) {
-        return
-      }
+function onDragover (evt) {
+  evt.preventDefault()
+}
 
-      let file
+function onDrop (evt) {
+  evt.preventDefault()
 
-      for (let i = 0; i < evt.dataTransfer.files.length; i++) {
-        if (evt.dataTransfer.files[i].type.startsWith('video')) {
-          file = evt.dataTransfer.files[i]
-          break
-        }
-      }
+  if (props.disabled) {
+    return
+  }
 
-      if (!file) {
-        return
-      }
+  if (evt.dataTransfer.files.length === 0) {
+    return
+  }
 
-      this.$emit('change', file)
+  let file
+
+  for (let i = 0; i < evt.dataTransfer.files.length; i++) {
+    if (evt.dataTransfer.files[i].type.startsWith('video')) {
+      file = evt.dataTransfer.files[i]
+      break
     }
   }
+
+  if (!file) {
+    return
+  }
+
+  emit('change', file)
 }
 </script>

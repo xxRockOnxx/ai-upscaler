@@ -6,7 +6,7 @@
       </div>
 
       <div class="text-xs md:text-sm">
-        {{ progress | round(1) }}%
+        {{ format(progress) }}%
       </div>
     </div>
 
@@ -18,27 +18,24 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import round from 'lodash.round'
 
-export default {
-  filters: {
-    round (val, precision) {
-      return round(val, precision).toFixed(precision)
-    }
+defineProps({
+  name: {
+    type: String,
+    required: true
   },
 
-  props: {
-    name: {
-      type: String,
-      required: true
-    },
-
-    progress: {
-      type: Number,
-      default: 0
-    }
+  progress: {
+    type: Number,
+    default: 0
   }
+})
+
+// Replaces the Vue 2 `round` filter removed in Vue 3.
+function format (value) {
+  return round(value, 1).toFixed(1)
 }
 </script>
 

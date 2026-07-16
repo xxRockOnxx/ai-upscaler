@@ -312,7 +312,7 @@ export default function createQueueMachine ({
 
       failed: {
         entry: assign({
-          error: (_, event) => 'Something went wrong on the server while processing your file. Consider reporting this to the Discord server.'
+          error: () => 'Something went wrong on the server while processing your file. Consider reporting this to the Discord server.'
         }),
         on: {
           UPLOAD: {

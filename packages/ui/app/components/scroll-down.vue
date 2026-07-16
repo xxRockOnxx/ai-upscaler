@@ -22,23 +22,19 @@
   </button>
 </template>
 
-<script>
-export default {
-  props: {
-    top: {
-      type: Number,
-      default: 0
-    }
-  },
-
-  methods: {
-    scrollDown () {
-      window.scrollTo({
-        top: this.top,
-        behavior: 'smooth'
-      })
-    }
+<script setup>
+const props = defineProps({
+  top: {
+    type: Number,
+    default: 0
   }
+})
+
+function scrollDown () {
+  window.scrollTo({
+    top: props.top,
+    behavior: 'smooth'
+  })
 }
 </script>
 

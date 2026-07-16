@@ -4,7 +4,6 @@ export default function createPollMachine ({
   callback,
   timeout,
   onDone,
-  // eslint-disable-next-line no-console
   onError = console.error
 }) {
   return createMachine({

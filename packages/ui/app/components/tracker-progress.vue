@@ -28,7 +28,7 @@
       <ButtonCancel
         class="w-full sm:w-auto"
         :disabled="status !== 'processing'"
-        @click.native="$emit('cancel')"
+        @cancel="$emit('cancel')"
       />
 
       <ButtonDownload
@@ -39,28 +39,28 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    status: {
-      type: String,
-      required: true
-    },
+<script setup>
+defineProps({
+  status: {
+    type: String,
+    required: true
+  },
 
-    extract: {
-      type: Number,
-      default: 0
-    },
+  extract: {
+    type: Number,
+    default: 0
+  },
 
-    enhance: {
-      type: Number,
-      default: 0
-    },
+  enhance: {
+    type: Number,
+    default: 0
+  },
 
-    stitch: {
-      type: Number,
-      default: 0
-    }
+  stitch: {
+    type: Number,
+    default: 0
   }
-}
+})
+
+defineEmits(['cancel'])
 </script>

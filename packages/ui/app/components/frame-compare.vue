@@ -69,48 +69,43 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    total: {
-      type: Number,
-      default: 0
-    }
-  },
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-  data () {
-    return {
-      active: null,
-      position: 50,
-      tracking: false
-    }
-  },
-
-  mounted () {
-    document.body.addEventListener('mousemove', this.onMouseMove)
-    document.body.addEventListener('mouseup', this.onMouseUp)
-  },
-
-  beforeDestroy () {
-    document.body.removeEventListener('mousemove', this.onMouseMove)
-    document.body.removeEventListener('mouseup', this.onMouseUp)
-  },
-
-  methods: {
-    onMouseUp () {
-      this.tracking = false
-    },
-
-    onMouseMove (evt) {
-      if (!this.tracking) {
-        return
-      }
-
-      const rect = this.$refs.canvas.getBoundingClientRect()
-      const position = (evt.clientX - rect.left) / rect.width * 100
-
-      this.position = Math.min(Math.max(position, 0), 100)
-    }
+defineProps({
+  total: {
+    type: Number,
+    default: 0
   }
+})
+
+const canvas = ref(null)
+const active = ref(null)
+const position = ref(50)
+const tracking = ref(false)
+
+function onMouseUp () {
+  tracking.value = false
 }
+
+function onMouseMove (evt) {
+  if (!tracking.value) {
+    return
+  }
+
+  const rect = canvas.value.getBoundingClientRect()
+  const next = (evt.clientX - rect.left) / rect.width * 100
+
+  position.value = Math.min(Math.max(next, 0), 100)
+}
+
+onMounted(() => {
+  document.body.addEventListener('mousemove', onMouseMove)
+  document.body.addEventListener('mouseup', onMouseUp)
+})
+
+onBeforeUnmount(() => {
+  document.body.removeEventListener('mousemove', onMouseMove)
+  document.body.removeEventListener('mouseup', onMouseUp)
+})
 </script>

@@ -1,0 +1,9 @@
+[build]
+  base = "packages/ui"
+  command = "yarn generate"
+  publish = ".output/public"
+
+[[redirects]]
+  from = "/api/*"
+  to = "http://51.79.206.144/api/:splat"
+  status = 200

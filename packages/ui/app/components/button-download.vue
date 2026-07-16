@@ -24,13 +24,11 @@
   </a>
 </template>
 
-<script>
-export default {
-  props: {
-    disabled: {
-      type: Boolean,
-      default: false
-    }
+<script setup>
+defineProps({
+  disabled: {
+    type: Boolean,
+    default: false
   }
-}
+})
 </script>
