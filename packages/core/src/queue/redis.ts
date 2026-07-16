@@ -149,11 +149,11 @@ export default function createStore(redis: Redis): QueueStore {
     async removeExpired() {
       const list = await this.getAll();
 
-      const promise = Object.keys(list)
+      const promises = Object.keys(list)
         .filter((id) => shouldBeRemoved(list[id]))
         .map((id) => redis.del(`queue:${id}`));
 
-      await promise;
+      await Promise.all(promises);
     },
 
     async removeIfExpired(id) {

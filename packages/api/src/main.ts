@@ -193,7 +193,15 @@ async function start() {
       }),
     });
 
-  queue.removeExpired();
+  // Sweep expired queue entries at boot and periodically afterwards,
+  // so cleanup does not depend on the process being restarted.
+  await queue.removeExpired();
+
+  setInterval(() => {
+    queue.removeExpired().catch((error) => {
+      server.log.error(error, 'Failed to remove expired queue entries');
+    });
+  }, 60_000).unref();
 
   await server.listen(3000, '0.0.0.0');
 }
