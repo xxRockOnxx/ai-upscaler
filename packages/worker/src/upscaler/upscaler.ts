@@ -46,7 +46,9 @@ export async function upscale({
     output: paths.frames(FRAME_NAME),
   });
 
-  let cancelListener = () => extract.emit('cancel');
+  const extractCancelListener = () => extract.emit('cancel');
+
+  emitter.once('cancel', extractCancelListener);
 
   const videoDetails = await new Promise<string[]>((resolve, reject) => {
     extract
@@ -55,10 +57,10 @@ export async function upscale({
       })
       .once('done', resolve)
       .once('error', reject)
-      .once('cancel', () => reject(new Error('Extract cancelled')));
+      .once('cancelled', () => reject(new Error('Extract cancelled')));
   })
     .finally(() => {
-      emitter.off('cancel', cancelListener);
+      emitter.off('cancel', extractCancelListener);
     });
 
   const enhance = enhanceFrames({
@@ -66,9 +68,9 @@ export async function upscale({
     output: paths.enhancedFrames(),
   });
 
-  cancelListener = () => enhance.emit('cancel');
+  const enhanceCancelListener = () => enhance.emit('cancel');
 
-  emitter.once('cancel', cancelListener);
+  emitter.once('cancel', enhanceCancelListener);
 
   await new Promise((resolve, reject) => {
     enhance
@@ -80,7 +82,7 @@ export async function upscale({
       .once('cancelled', () => reject(new Error('Enhance cancelled')));
   })
     .finally(() => {
-      emitter.off('cancel', cancelListener);
+      emitter.off('cancel', enhanceCancelListener);
     });
 
   const stitch = stitchFrames({
@@ -91,7 +93,9 @@ export async function upscale({
       .split('fps')[0]),
   });
 
-  cancelListener = () => stitch.emit('cancel');
+  const stitchCancelListener = () => stitch.emit('cancel');
+
+  emitter.once('cancel', stitchCancelListener);
 
   await new Promise((resolve, reject) => {
     stitch
@@ -103,6 +107,6 @@ export async function upscale({
       .once('cancelled', () => reject(new Error('Stitch cancelled')));
   })
     .finally(() => {
-      emitter.off('cancel', cancelListener);
+      emitter.off('cancel', stitchCancelListener);
     });
 }

@@ -48,9 +48,9 @@ describe('processor.ts', () => {
       process.nextTick(resolve);
     });
 
-    emitter.emit('extract:progress', 100, []);
-    emitter.emit('enhance:progress', 100, []);
-    emitter.emit('stitch:progress', 100);
+    emitter.emit('extract:progress', { percent: 100, frames: [] });
+    emitter.emit('enhance:progress', { percent: 100, frames: [] });
+    emitter.emit('stitch:progress', { percent: 100 });
 
     expect(job.updateProgress).toBeCalledTimes(3);
 
