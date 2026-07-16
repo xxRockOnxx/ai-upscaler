@@ -7,7 +7,13 @@ export function createAssertQueue(queue: QueueStore): preHandlerAsyncHookHandler
     const queueList = await queue.getAll();
 
     if (!request.cookies.queue || !queueList[request.cookies.queue]) {
-      reply.code(400).send('Not in queue or invalid queue id');
+      return reply
+        .code(400)
+        .send({
+          message: 'Not in queue or invalid queue id',
+        });
     }
+
+    return undefined;
   };
 }

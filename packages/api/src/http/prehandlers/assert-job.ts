@@ -7,11 +7,13 @@ export function createAssertJob(job: JobStore): preHandlerAsyncHookHandler {
     const jobId = await job.get(request.cookies.queue);
 
     if (!jobId) {
-      reply
+      return reply
         .code(400)
         .send({
           message: 'Current request has no job',
         });
     }
+
+    return undefined;
   };
 }
