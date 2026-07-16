@@ -31,7 +31,7 @@ export default async function createServer() {
   });
 
   // Automatically unsign queue cookie for convenience.
-  server.addHook('preHandler', async (req) => {
+  server.addHook('preHandler', async (req, reply) => {
     if (!req.cookies.queue) {
       return;
     }
@@ -39,6 +39,12 @@ export default async function createServer() {
     const { valid, value } = req.unsignCookie(req.cookies.queue);
 
     if (!valid) {
+      // A failed signature check means the cookie is tampered or was signed
+      // with a rotated secret. Without this, the raw signed blob flows into
+      // handlers as if it were a queue id, and the client keeps re-sending
+      // the dead cookie on every request. Drop it on both sides.
+      delete req.cookies.queue;
+      reply.clearCookie('queue', { httpOnly: true });
       return;
     }
 
