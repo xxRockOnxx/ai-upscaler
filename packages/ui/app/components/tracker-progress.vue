@@ -1,45 +1,41 @@
 <template>
   <div>
-    <div class="flex items-center justify-between">
-      <div class="text-2xl md:text-4xl">
-        Progress
-      </div>
+    <div class="text-xl font-semibold tracking-tight mb-8">
+      Processing
     </div>
 
-    <ProgressTask
-      class="mt-4 md:mt-8"
-      name="Extracting frames"
-      :progress="extract"
-    />
+    <div class="space-y-8">
+      <ProgressTask
+        name="Extract frames"
+        :progress="extract"
+      />
 
-    <ProgressTask
-      class="mt-4 md:mt-8"
-      name="Enhancing frames"
-      :progress="enhance"
-    />
+      <ProgressTask
+        name="Enhance frames"
+        :progress="enhance"
+      />
 
-    <ProgressTask
-      v-if="interpolate !== null"
-      class="mt-4 md:mt-8"
-      name="Interpolating frames"
-      :progress="interpolate"
-    />
+      <ProgressTask
+        v-if="interpolate !== null"
+        name="Interpolate frames"
+        :progress="interpolate"
+      />
 
-    <ProgressTask
-      class="mt-4 md:mt-8"
-      name="Stitching frames"
-      :progress="stitch"
-    />
+      <ProgressTask
+        name="Stitch frames"
+        :progress="stitch"
+      />
+    </div>
 
-    <div class="flex mt-6">
+    <div class="flex gap-4 mt-8">
       <ButtonCancel
-        class="w-full sm:w-auto"
+        class="flex-1 sm:flex-none"
         :disabled="status !== 'processing'"
         @cancel="$emit('cancel')"
       />
 
       <ButtonDownload
-        class="w-full ml-2 sm:w-auto"
+        class="flex-1 sm:flex-none"
         :disabled="status !== 'finished'"
       />
     </div>
@@ -63,8 +59,6 @@ defineProps({
     default: 0
   },
 
-  // `null` hides the task — the worker only reports `interpolate`
-  // progress when the job was submitted with interpolation enabled.
   interpolate: {
     type: Number,
     default: null

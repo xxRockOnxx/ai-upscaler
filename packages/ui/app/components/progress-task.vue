@@ -1,20 +1,20 @@
 <template>
   <div>
-    <div class="flex items-center justify-between">
-      <div class="text-sm font-bold tracking-wider md:text-base">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm font-semibold">
         {{ name }}
       </div>
-
-      <div class="text-xs md:text-sm">
+      <div class="text-sm text-neutral-500 tabular-nums">
         {{ format(progress) }}%
       </div>
     </div>
 
-    <progress
-      class="w-full mt-2 md:mt-4"
-      max="100"
-      :value="progress"
-    />
+    <div class="h-3 w-full bg-mist">
+      <div
+        class="h-full bg-accent transition-all duration-300 ease-out"
+        :style="{ width: progress + '%' }"
+      />
+    </div>
   </div>
 </template>
 
@@ -33,18 +33,7 @@ defineProps({
   }
 })
 
-// Replaces the Vue 2 `round` filter removed in Vue 3.
 function format (value) {
   return round(value, 1).toFixed(1)
 }
 </script>
-
-<style scoped>
-progress::-webkit-progress-value {
-  background-image: linear-gradient( 135deg, #3C8CE7 10%, #00EAFF 100%);
-}
-
-progress::-webkit-progress-bar {
-  @apply bg-gray-300;
-}
-</style>

@@ -1,24 +1,11 @@
 <template>
   <button
     type="button"
-    class="p-3 text-white bg-[#085FC0] border-2 rounded-full shadow-2xl bounce"
-    aria-label="Scroll down"
+    class="flex items-center gap-2 bg-ink text-white px-4 py-2.5 text-xs font-medium uppercase tracking-widest shadow-lg transition-opacity hover:opacity-80 bounce"
+    aria-label="Scroll down to info"
     @click="scrollDown"
   >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="w-6 h-6"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
+    ↓ Info
   </button>
 </template>
 
@@ -40,30 +27,11 @@ function scrollDown () {
 
 <style scoped>
 .bounce {
-  animation: bounce 2s infinite;
+  animation: bounce 2.5s ease-in-out infinite;
 }
 
 @keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    -webkit-transform: translateY(0);
-    -ms-transform: translateY(0);
-    transform: translateY(0);
-  }
-
-  33% {
-    -webkit-transform: translateY(-21%);
-    -ms-transform: translateY(-21%);
-    transform: translateY(-21%);
-  }
-
-  66% {
-    -webkit-transform: translateY(-13%);
-    -ms-transform: translateY(-13%);
-    transform: translateY(-13%);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 </style>

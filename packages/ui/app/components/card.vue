@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-4 shadow"
+    class="px-6 py-4 text-base leading-relaxed"
     :class="computedClass"
   >
     <slot />
@@ -20,14 +20,11 @@ const props = defineProps({
 const computedClass = computed(() => {
   switch (props.type) {
     case 'info':
-      return 'bg-[#3C8CE7] text-white'
-
+      return 'bg-ink text-white'
     case 'warning':
-      return 'bg-yellow-50 text-yellow-700'
-
+      return 'border-l-4 border-amber-500 bg-amber-50 text-amber-800'
     case 'error':
-      return 'bg-red-50 text-red-500'
-
+      return 'border-l-4 border-red-400 bg-red-50 text-red-700'
     default:
       return ''
   }

@@ -1,26 +1,27 @@
 <template>
-  <label class="block">
-    <span class="text-sm font-bold text-gray-600">
+  <div>
+    <div class="font-medium tracking-wide text-neutral-500 mb-3">
       Processor
-    </span>
+    </div>
 
-    <select
-      class="w-full px-3 py-2 mt-1 bg-white border rounded focus:outline-none focus:ring focus:border-[#3C8CE7] disabled:opacity-50"
-      :value="modelValue"
-      :disabled="disabled"
-      @change="onChange"
+    <div
+      class="flex border border-mist"
+      :class="{ 'opacity-40 pointer-events-none': disabled }"
     >
-      <option value="real-esrgan">
-        Real-ESRGAN
-      </option>
-      <option value="waifu2x">
-        waifu2x
-      </option>
-      <option value="anime4k">
-        Anime4K
-      </option>
-    </select>
-  </label>
+      <button
+        v-for="opt in options"
+        :key="opt.value"
+        type="button"
+        class="flex-1 px-4 py-2 font-semibold transition-colors border-r border-mist last:border-r-0"
+        :class="modelValue === opt.value
+          ? 'bg-ink text-white'
+          : 'bg-white text-ink hover:bg-mist'"
+        @click="$emit('change', opt.value)"
+      >
+        {{ opt.label }}
+      </button>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -35,9 +36,11 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['change'])
+defineEmits(['change'])
 
-function onChange (evt) {
-  emit('change', evt.target.value)
-}
+const options = [
+  { value: 'real-esrgan', label: 'Real-ESRGAN' },
+  { value: 'waifu2x', label: 'waifu2x' },
+  { value: 'anime4k', label: 'Anime4K' }
+]
 </script>

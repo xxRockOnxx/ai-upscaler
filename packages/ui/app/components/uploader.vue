@@ -1,57 +1,39 @@
 <template>
   <div
+    class="w-full min-h-[340px] py-12 flex flex-col items-center justify-center cursor-pointer select-none transition-colors border-2 border-dashed"
+    :class="disabled
+      ? 'border-mist opacity-40 pointer-events-none'
+      : 'border-mist hover:border-ink'"
     @dragover="onDragover"
     @drop="onDrop"
+    @click="onClick"
   >
-    <button
-      class="w-full h-full p-10 sm:p-16"
-      type="button"
-      :disabled="disabled"
-      @click="onClick"
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="w-12 h-12 text-neutral-500"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      stroke-width="1.5"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="w-10 h-10 mx-auto text-gray-400"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-        />
-      </svg>
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+      />
+    </svg>
 
-      <div class="mt-6 text-xl text-center md:text-2xl">
-        Drop a video to upload
-      </div>
+    <div class="mt-6 text-xl font-semibold tracking-tight">
+      Drop video here
+    </div>
 
-      <div class="mt-6 text-center">
-        <div
-          class="inline-flex items-center px-4 py-2 text-white font-bold bg-[#3C8CE7] rounded"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <div class="ml-2 text-sm md:text-base">
-            Select Video
-          </div>
-        </div>
-      </div>
-    </button>
+    <div class="mt-3 text-base text-neutral-500">
+      or <span class="underline underline-offset-2">select file</span>
+    </div>
+
+    <div class="mt-6 text-sm text-neutral-500 uppercase tracking-wider">
+      Up to 720p · 5 min max
+    </div>
 
     <input
       ref="inputEl"

@@ -1,27 +1,42 @@
 <template>
-  <div
-    class="p-4 space-y-2 text-sm bg-gray-50 md:p-6 md:text-base"
-  >
-    <div>
-      Status: {{ status }}
-    </div>
+  <div class="border-t border-mist bg-paper px-6 py-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+    <span class="text-neutral-500 uppercase tracking-wider">
+      Status&nbsp;
+      <span
+        class="font-medium"
+        :class="statusClass"
+      >{{ status }}</span>
+    </span>
 
-    <div v-if="status === 'waiting'">
-      Your position: {{ position }}
-    </div>
+    <span
+      v-if="status === 'waiting'"
+      class="text-neutral-500 uppercase tracking-wider"
+    >
+      Position&nbsp;<span class="font-medium text-ink">{{ position }}</span>
+    </span>
 
-    <div v-else-if="status === 'processing'">
-      Elapsed: {{ elapsed }}
-    </div>
+    <span
+      v-else-if="status === 'processing'"
+      class="text-neutral-500 uppercase tracking-wider"
+    >
+      Elapsed&nbsp;<span class="font-medium text-ink tabular-nums">{{ elapsed }}</span>
+    </span>
 
-    <div>
-      People waiting: {{ total }}
-    </div>
+    <span class="text-neutral-500 uppercase tracking-wider">
+      Waiting&nbsp;<span class="font-medium text-ink">{{ total }}</span>
+    </span>
+
+    <span
+      v-if="status === 'waiting' || status === 'processing'"
+      class="text-neutral-500 uppercase tracking-wider md:ml-auto"
+    >
+      One video at a time — keep this tab open
+    </span>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   status: {
@@ -47,6 +62,16 @@ const props = defineProps({
 
 const elapsed = ref('00:00:00')
 let elapsedInterval = null
+
+const statusClass = computed(() => {
+  switch (props.status) {
+    case 'processing': return 'text-accent'
+    case 'finished': return 'text-green-600'
+    case 'failed':
+    case 'error': return 'text-accent'
+    default: return 'text-ink'
+  }
+})
 
 function startElapsed () {
   elapsedInterval = setInterval(() => {

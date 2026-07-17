@@ -1,8 +1,13 @@
 <template>
-  <div>
+  <div class="bg-paper">
     <Hero />
 
-    <div class="container px-4 py-12 xl:py-28">
+    <Faq />
+
+    <div
+      ref="toolEl"
+      class="container px-6 pt-8 pb-16 xl:pt-10 xl:pb-24"
+    >
       <UnavailableCard
         v-if="status === 'unavailable'"
         class="mb-4"
@@ -34,11 +39,11 @@
         </Card>
       </transition>
 
-      <div class="border shadow">
-        <div class="lg:flex">
-          <div class="lg:w-1/2">
+      <div class="border border-mist">
+        <div class="lg:flex lg:divide-x lg:divide-mist">
+          <div class="lg:w-1/2 flex flex-col">
             <template v-if="status !== 'processing'">
-              <div class="px-4 pt-6 md:px-6">
+              <div class="px-6 pt-8 md:px-10 md:pt-10">
                 <ProcessorSelect
                   :model-value="processor"
                   :disabled="status === 'unavailable'"
@@ -53,10 +58,7 @@
               </div>
 
               <Uploader
-                class="h-full"
-                :class="{
-                  'opacity-50': status === 'unavailable'
-                }"
+                class="flex-1"
                 :disabled="status === 'unavailable'"
                 @change="onFileChange"
               />
@@ -71,7 +73,7 @@
 
           <div class="lg:w-1/2">
             <TrackerProgress
-              class="px-4 py-8 md:py-12 md:px-6"
+              class="px-6 py-10 md:py-14 md:px-12"
               :status="status"
               :extract="progress.extract"
               :enhance="progress.enhance"
@@ -91,9 +93,7 @@
       </div>
     </div>
 
-    <div ref="faqEl">
-      <Faq />
-    </div>
+    <Support />
 
     <ScrollDown
       v-show="showScroll"
@@ -132,7 +132,7 @@ const interpolation = ref('none')
 const showScroll = ref(true)
 const scrollTop = ref(0)
 
-const faqEl = ref(null)
+const toolEl = ref(null)
 
 // The running XState actor — kept non-reactive (wrapping a live actor in deep
 // reactivity is a Vue footgun).
@@ -154,7 +154,7 @@ function resolveStatus (value) {
 }
 
 /**
- * Hides the scroll down button when the user scrolls down to the FAQ.
+ * Hides the scroll down button when the user scrolls down to the tool.
  */
 function startObserver () {
   observer = new window.IntersectionObserver((entries) => {
@@ -166,7 +166,7 @@ function startObserver () {
     threshold: [0.2]
   })
 
-  observer.observe(faqEl.value)
+  observer.observe(toolEl.value)
 }
 
 function startQueue () {
@@ -213,7 +213,7 @@ function onCancel () {
 }
 
 onMounted(async () => {
-  scrollTop.value = faqEl.value.offsetTop
+  scrollTop.value = toolEl.value.offsetTop
 
   startObserver()
 

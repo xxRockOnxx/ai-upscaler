@@ -7,8 +7,17 @@ module.exports = {
     container: {
       center: true
     },
-
-    extend: {}
+    extend: {
+      colors: {
+        paper: '#F5F7FA',
+        ink: '#1A1E2E',
+        accent: '#5B6EE1',
+        mist: '#DDE3F0',
+      },
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif']
+      }
+    }
   },
   plugins: []
 }
